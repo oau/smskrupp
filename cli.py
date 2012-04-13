@@ -6,10 +6,10 @@ import core
 def usage():
     print("%s add-group <name>"%sys.argv[0])
     print("%s list-groups"%sys.argv[0])
+    print("%s list-members <group>"%sys.argv[0])
     print("%s add-member <number> <alias> <group>"%sys.argv[0])
     print("%s set-sender <number> <group> <phone> [keyword]"%sys.argv[0])
     print("%s set-admin <number> <group> <phone> [keyword]"%sys.argv[0])
-    print("%s list-members <group>"%sys.argv[0])
     print("%s fake-incoming <src> <phone> <msg>"%sys.argv[0])
     sys.exit(1)
 
