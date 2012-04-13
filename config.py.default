@@ -1,6 +1,7 @@
 class Config:
     smsdrc = '/etc/gammu-smsdrc'
     log = '/tmp/smsd.log'
-    db = '/tmp/smsd/smsd.db'
+    db = '/tmp/smsd.db'
+    test_db = 'tmp.db'
 
 config = Config()
