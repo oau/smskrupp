@@ -68,10 +68,10 @@ class TestData:
         self.data.fake_incoming(number1, "phone1", "hello")
         u = self.data.get_unprocessed()
         assert len(u) == 1
-        i,src,phone,txt = u[0]
-        assert src == number1
-        assert phone == "phone1"
-        assert txt == "hello"
+        #i,src,phone,txt = u[0]
+        assert number1 == u[0]['src']
+        assert "phone1" == u[0]['phone']
+        assert "hello" == u[0]['text']
 
 class TestWorker:
     def setUp(self):

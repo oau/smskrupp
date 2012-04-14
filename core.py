@@ -197,13 +197,54 @@ class Data:
             return None
         return x[0]
 
+    def _calculate_udh_part(self, udh):
+        if not udh:
+            return None
+        length = int(udh[:2], 16)
+        i = 1
+        while i <= length:
+            # parse one IEI
+            iei_id = int(udh[i*2:i*2+2], 16)
+            i += 1
+            iei_len = int(udh[i*2:i*2+2], 16)
+            if not iei_id == 0:
+                # not concatenation iei
+                i += iei_len
+                continue
+            i += 1
+            ref = int(udh[i*2:i*2+2], 16)
+            i += 1
+            num_parts = int(udh[i*2:i*2+2], 16)
+            i += 1
+            part = int(udh[i*2:i*2+2], 16)
+            return part,num_parts,ref
+
+
     def get_unprocessed(self):
         c = self.cursor
-        c.execute("select ID,SenderNumber,RecipientID,TextDecoded "+
+        c.execute("select ID,SenderNumber,RecipientID,TextDecoded,UDH "+
                   "from inbox where Processed='false'")
+        parts = {}
         ret = []
         for row in c:
-            ret.append(row)
+            i,src,phone,text,udh = row
+            x = self._calculate_udh_part(udh)
+            if x:
+                part,num_parts,ref = x
+                key = src+'-'+str(ref)
+                if not key in parts:
+                    parts[key] = src,phone,[],[]
+                parts[key][2].append((part,text))
+                parts[key][3].append(i)
+
+                if len(parts[key][2]) == num_parts:
+                    # found all parts
+                    tot_text = "".join(map(lambda x: x[1], sorted(parts[key][2], key = lambda x: x[0])))
+                    ret.append({'ids':parts[key][3], 'src':src, 'phone':phone, 'text':tot_text})
+                    del parts[key]
+            else:
+                # single part
+                ret.append({'ids':[i], 'src':src, 'phone':phone, 'text':text})
         return ret
 
     def set_processed(self, msgId):
@@ -259,8 +300,8 @@ class Worker:
         self._log("starting worker")
         messages = self.data.get_unprocessed()
         for m in messages:
-            i,src,dest,msg = m
-            self._log("found message: [%d] %s->%s '%s'"%(i,src,dest,msg))
+            ids,src,dest,msg = m['ids'],m['src'],m['phone'],m['text']
+            self._log("found message: %s %s->%s '%s'"%(str(ids),src,dest,msg))
             a = self.data.get_admin(src,dest,msg)
             if a:
                 keyword,cmd,group = a
@@ -297,6 +338,7 @@ class Worker:
                 for member in members:
                     self.send(member['number'],msg)
 
-            self.data.set_processed(i)
+            for i in ids:
+                self.data.set_processed(i)
         self.cleanup()
 
