@@ -226,8 +226,12 @@ class Data:
         self.conn.commit()
 
     def cleanup(self):
-        self.cursor.close()
-        self.conn.close()
+        if self.cursor:
+            self.cursor.close()
+            self.cursor = None
+        if self.conn:
+            self.conn.close()
+            self.conn = None
 
 class Worker:
     def __init__(self):
@@ -235,8 +239,10 @@ class Worker:
         self.log = open(config.log, "a")
         self.data = Data()
 
-    def _cleanup(self):
-        self.log.close()
+    def cleanup(self):
+        if self.log:
+            self.log.close()
+            self.log = None
         self.data.cleanup()
 
     def _log(self, text):
@@ -245,7 +251,6 @@ class Worker:
         self.log.flush()
 
     def send(self, dest, msg):
-        msg = msg.decode('UTF-8')
         message = {'Text': msg, 'SMSC': {'Location': 1}, 'Number': dest}
         self._log("sending "+str(message))
         self.smsd.InjectSMS([message])
@@ -293,5 +298,5 @@ class Worker:
                     self.send(member['number'],msg)
 
             self.data.set_processed(i)
-        self._cleanup()
+        self.cleanup()
 
