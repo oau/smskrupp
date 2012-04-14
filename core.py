@@ -241,7 +241,7 @@ class Worker:
 
     def _log(self, text):
         t = strftime("%Y-%m-%d %H:%M:%S", localtime())
-        self.log.write("[%s] [worker] %s\n"%(t,text));
+        self.log.write("[%s] [worker] %s\n"%(t,text.encode('utf-8')));
         self.log.flush()
 
     def send(self, dest, msg):
