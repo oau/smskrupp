@@ -292,9 +292,32 @@ class Worker:
         self.log.flush()
 
     def send(self, dest, msg):
-        message = {'Text': msg, 'SMSC': {'Location': 1}, 'Number': dest}
-        self._log("sending "+str(message))
-        self.smsd.InjectSMS([message])
+        # this length calculation will fail will not work for some special
+        # gsm7 chars like [
+        if len(msg) <= 160: 
+            message = {'Text': msg, 'SMSC': {'Location': 1}, 'Number': dest}
+            self._log("sending single part message "+str(message))
+            self.smsd.InjectSMS([message])
+        else:
+            # multipart
+            self._log("sending multipart message");
+            smsinfo = {
+                    'Class': 1,
+                    'Unicode': False,
+                    'Entries':  [{
+                            'ID': 'ConcatenatedTextLong',
+                            'Buffer': msg
+                        }]}
+            # Encode messages
+            encoded = gammu.EncodeSMS(smsinfo)
+            # Send messages
+            for message in encoded:
+                # Fill in numbers
+                message['SMSC'] = {'Location': 1}
+                message['Number'] = dest
+                # Actually send the message
+                self._log("sending part of message: "+str(message));
+                self.smsd.InjectSMS([message])
 
     def run(self):
         self._log("starting worker")
