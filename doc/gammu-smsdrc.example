@@ -1,0 +1,14 @@
+[gammu]
+port = /dev/ttyUSB1
+connection = at115200
+
+[smsd]
+service = SQL
+driver = sqlite3
+dbdir = /tmp/
+database = smskrupp.db
+
+logfile = /tmp/smsd.log
+debuglevel = 255
+phoneid = phone1
+runonreceive = /path/to/smskrupp/onreceive.py
