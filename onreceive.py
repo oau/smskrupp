@@ -2,10 +2,10 @@
 #-*- coding: utf-8 -*-
 import core
 
-worker = None
+doer = None
 try:
-    worker = core.Worker()
-    worker.run()
+    doer = core.Doer()
+    doer.run()
 finally:
-    if worker:
-        worker.cleanup()
+    if doer:
+        doer.cleanup()

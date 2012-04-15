@@ -1,11 +1,6 @@
 import core
 from config import config
 
-def nomalize_number(number):
-    if number[:2] == '07':
-        return '+46'+number[1:]
-    return number
-
 class TestData:
     def setUp(self):
         config.db = config.test_db
@@ -68,14 +63,13 @@ class TestData:
         self.data.fake_incoming(number1, "phone1", "hello")
         u = self.data.get_unprocessed()
         assert len(u) == 1
-        #i,src,phone,txt = u[0]
         assert number1 == u[0]['src']
         assert "phone1" == u[0]['phone']
         assert "hello" == u[0]['text']
 
-class TestWorker:
+class TestDoer:
     def setUp(self):
-        self.worker = core.Worker()
+        self.Doer = core.Doer()
         self.data = core.Data()
         self.data.setup_db()
         self.data.purge_all_data()
@@ -87,7 +81,7 @@ class TestWorker:
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_sender(phone, member_id = mid)
         self.data.fake_incoming(number, phone, "hello")
-        self.worker.run()
+        self.Doer.run()
 
     def test_run_admin_command_add(self):
         number = "+46736000001"
@@ -96,7 +90,7 @@ class TestWorker:
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
         self.data.fake_incoming(number, phone, "add 073123")
-        self.worker.run()
+        self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'], self.data.get_group_members(gid))
         assert not "+4673123" in self.data.get_group_senders(gid)
         assert not "+4673123" in self.data.get_group_admins(gid)
@@ -108,7 +102,7 @@ class TestWorker:
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
         self.data.fake_incoming(number, phone, "add sender 073123")
-        self.worker.run()
+        self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'],
                                  self.data.get_group_members(gid))
         assert "+4673123" in self.data.get_group_senders(gid)
@@ -121,7 +115,7 @@ class TestWorker:
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
         self.data.fake_incoming(number, phone, "add admin 073123")
-        self.worker.run()
+        self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'],
                                  self.data.get_group_members(gid))
         assert "+4673123" in self.data.get_group_senders(gid)

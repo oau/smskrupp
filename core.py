@@ -274,7 +274,7 @@ class Data:
             self.conn.close()
             self.conn = None
 
-class Worker:
+class Doer:
     def __init__(self):
         self.smsd = gammu.smsd.SMSD(config.smsdrc)
         self.log = open(config.log, "a")
@@ -288,7 +288,7 @@ class Worker:
 
     def _log(self, text):
         t = strftime("%Y-%m-%d %H:%M:%S", localtime())
-        self.log.write("[%s] [worker] %s\n"%(t,text.encode('utf-8')));
+        self.log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
         self.log.flush()
 
     def send(self, dest, msg):
@@ -320,7 +320,7 @@ class Worker:
                 self.smsd.InjectSMS([message])
 
     def run(self):
-        self._log("starting worker")
+        self._log("starting doer")
         messages = self.data.get_unprocessed()
         for m in messages:
             ids,src,dest,msg = m['ids'],m['src'],m['phone'],m['text']
