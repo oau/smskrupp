@@ -83,6 +83,16 @@ class TestDoer:
         self.data.fake_incoming(number, phone, "hello")
         self.Doer.run()
 
+    def test_run_stop_command(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1")
+        mid = self.data.add_number(number, "alias", gid)
+        self.data.set_admin(phone, member_id = mid)
+        self.data.fake_incoming(number, phone, "stop")
+        self.Doer.run()
+        assert 0 == len(self.data.get_group_members(gid))
+
     def test_run_admin_command_add(self):
         number = "+46736000001"
         phone = "phone1"

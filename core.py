@@ -197,6 +197,17 @@ class Data:
             return None
         return x[0]
 
+    def get_member_ids(self, number):
+        ''' get member ids for number in any group
+        '''
+        c = self.cursor
+        c.execute('select id from qq_groupMembers where number=?',
+                (number,))
+        ret = []
+        for row in c:
+            ret.append(row[0])
+        return ret
+
     def _calculate_udh_part(self, udh):
         if not udh:
             return None
@@ -218,7 +229,6 @@ class Data:
             i += 1
             part = int(udh[i*2:i*2+2], 16)
             return part,num_parts,ref
-
 
     def get_unprocessed(self):
         c = self.cursor
@@ -247,9 +257,9 @@ class Data:
                 ret.append({'ids':[i], 'src':src, 'phone':phone, 'text':text})
         return ret
 
-    def set_processed(self, msgId):
+    def set_processed(self, msgId, status='true'):
         c = self.cursor
-        c.execute("update inbox set Processed='true' where ID=?", (msgId,))
+        c.execute("update inbox set Processed=? where ID=?", (status,msgId))
         self.conn.commit()
 
     def fake_incoming(self, src, phoneId, msg):
@@ -325,18 +335,28 @@ class Doer:
         for m in messages:
             ids,src,dest,msg = m['ids'],m['src'],m['phone'],m['text']
             self._log("found message: %s %s->%s '%s'"%(str(ids),src,dest,msg))
-            a = self.data.get_admin(src,dest,msg)
-            if a:
-                keyword,cmd,group = a
+
+            lmsg = msg.lower().strip()
+            admin_cmd = self.data.get_admin(src,dest,msg)
+            sender_cmd = self.data.get_sendout(src,dest,msg)
+            status = 'unknown'
+            if lmsg == 'stop' or lmsg == 'stopp':
+                for i in self.data.get_member_ids(src):
+                    self.data.remove_number(member_id=i)
+                status = 'stop'
+
+            if status == 'unknown' and admin_cmd:
+                keyword,cmd,group = admin_cmd
                 cmd = cmd.lower()
                 self._log("doing command '%s' to group %d"%(cmd,group))
+                status = 'admin'
                 if cmd.startswith('add sender '):
                     number = normalize_number(cmd[len('add sender '):])
                     if number:
                         mid = self.data.add_number(number, 'noname', group)
                         self.data.set_sender(dest, member_id=mid, keyword=keyword)
                     else:
-                        self._log("error: couldn't find number in add command")
+                        self._log("warning: couldn't find number in add command")
                 elif cmd.startswith('add admin '):
                     number = normalize_number(cmd[len('add admin '):])
                     if number:
@@ -353,16 +373,17 @@ class Doer:
                         self._log("error: couldn't find number in add command")
                 else:
                     self._log("error: unknown admin command!")
+                    status = 'unknown'
 
-            s = self.data.get_sendout(src,dest,msg)
-            if s:
-                msg,group = s
+            if status == 'unknown' and sender_cmd:
+                msg,group = sender_cmd
                 self._log("doing sendout to group %d"%group)
                 members = self.data.get_group_members(group)
                 for member in members:
                     self.send(member['number'],msg)
+                status = 'send'
 
             for i in ids:
-                self.data.set_processed(i)
+                self.data.set_processed(i,status)
         self.cleanup()
 
