@@ -101,7 +101,7 @@ class TestDoer:
         gid = self.data.add_group("group1")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
-        self.data.fake_incoming(number, phone, "add sender 073123")
+        self.data.fake_incoming(number, phone, "Add Sender 073123")
         self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'],
                                  self.data.get_group_members(gid))

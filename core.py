@@ -328,6 +328,7 @@ class Doer:
             a = self.data.get_admin(src,dest,msg)
             if a:
                 keyword,cmd,group = a
+                cmd = cmd.lower()
                 self._log("doing command '%s' to group %d"%(cmd,group))
                 if cmd.startswith('add sender '):
                     number = normalize_number(cmd[len('add sender '):])
