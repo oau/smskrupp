@@ -4,6 +4,7 @@ from config import config
 class TestData:
     def setUp(self):
         config.db = config.test_db
+        config.smsdrc = config.test_smsdrc
         self.data = core.Data()
         self.data.setup_db()
         self.data.purge_all_data()
@@ -53,7 +54,7 @@ class TestData:
         gid = self.data.add_group("group1")
         mid = self.data.add_number(number1, "alias", gid)
         self.data.set_admin(dest, member_id=mid)
-        kw,cmd,group = self.data.get_admin(number1, dest, "hello")
+        kw,cmd,group = self.data.get_admin(number1, dest, "/hello")
         assert kw == ""
         assert cmd == "hello"
         assert group == gid
@@ -69,6 +70,8 @@ class TestData:
 
 class TestDoer:
     def setUp(self):
+        config.db = config.test_db
+        config.smsdrc = config.test_smsdrc
         self.Doer = core.Doer()
         self.data = core.Data()
         self.data.setup_db()
@@ -99,7 +102,7 @@ class TestDoer:
         gid = self.data.add_group("group1")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
-        self.data.fake_incoming(number, phone, "add 073123")
+        self.data.fake_incoming(number, phone, "/add 073123")
         self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'], self.data.get_group_members(gid))
         assert not "+4673123" in self.data.get_group_senders(gid)
@@ -111,7 +114,7 @@ class TestDoer:
         gid = self.data.add_group("group1")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
-        self.data.fake_incoming(number, phone, "Add Sender 073123")
+        self.data.fake_incoming(number, phone, "/Add Sender 073123")
         self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'],
                                  self.data.get_group_members(gid))
@@ -124,7 +127,7 @@ class TestDoer:
         gid = self.data.add_group("group1")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_admin(phone, member_id = mid)
-        self.data.fake_incoming(number, phone, "add admin 073123")
+        self.data.fake_incoming(number, phone, "/add admin 073123")
         self.Doer.run()
         assert "+4673123" in map(lambda x: x['number'],
                                  self.data.get_group_members(gid))

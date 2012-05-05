@@ -1,7 +1,9 @@
 class Config:
-    smsdrc = '/etc/gammu-smsdrc'
-    log = 'smskrupp.log'
     db = 'smskrupp.db'
+    smsdrc = '/etc/gammu-smsdrc'
     test_db = 'tmp.db'
+    test_smsdrc = 'test-gammu-smsdrc'
+    admin_prefix='/'
+    log = 'smskrupp.log'
 
 config = Config()

@@ -129,6 +129,11 @@ class Data:
     def get_admin(self, src, dest, msg):
         ''' return pair (cmd, groupId)
         '''
+        if not msg.startswith(config.admin_prefix):
+            # not an admin command
+            return None
+        msg = msg[len(config.admin_prefix):]
+
         c = self.cursor
         c.execute('select a.keyword,m.groupId from qq_groupMembers m '+
                   'join qq_adminmap a on m.id = a.memberId '+
@@ -336,10 +341,10 @@ class Doer:
             ids,src,dest,msg = m['ids'],m['src'],m['phone'],m['text']
             self._log("found message: %s %s->%s '%s'"%(str(ids),src,dest,msg))
 
-            lmsg = msg.lower().strip()
             admin_cmd = self.data.get_admin(src,dest,msg)
             sender_cmd = self.data.get_sendout(src,dest,msg)
             status = 'unknown'
+            lmsg = msg.lower().strip()
             if lmsg == 'stop' or lmsg == 'stopp':
                 for i in self.data.get_member_ids(src):
                     self.data.remove_number(member_id=i)
@@ -373,7 +378,6 @@ class Doer:
                         self._log("error: couldn't find number in add command")
                 else:
                     self._log("error: unknown admin command!")
-                    status = 'unknown'
 
             if status == 'unknown' and sender_cmd:
                 msg,group = sender_cmd
