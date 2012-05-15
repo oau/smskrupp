@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if session.logged_in %}
+    <table>
+        <thead>
+            <tr><th>name</th><th>password</th><th>groups</th></tr>
+        </thead>
+        <tbody>
+    {% for user in webusers %}
+    <tr>
+      <td>
+          {% if user.privilege > 1 %}
+          <b> {{user.username}} </b>
+          {% else %}
+           {{user.username}} 
+          {% endif %}
+      </td>
+      <td><form action="{{ url_for('settings') }}" method=post class=settings>
+            <input type=hidden value="{{ user.user_id }}" name=userid>
+            <input type=password name=pw size=4>
+            <input type=submit value=set></form>
+      </td>
+      <td>
+      {% for group in user.groups %}
+      <a href="{{ url_for('remove_webuser_group',uid=user.user_id,gid=group.group_id) }}">
+          {{ group.group_name }}
+      </a>
+      {% endfor %}
+      </td>
+      <td><form action="{{ url_for('settings') }}" method=post class=settings>
+            <input type=hidden value="{{ user.user_id }}" name=userid>
+            <select name=group>
+                  {% for group in groups %}
+                  <option value={{ group.i }}>{{ group.name }}</option>
+                  {% endfor %}
+      </select><input type=submit value=add></form></td>
+      <td><a href="{{ url_for('remove_webuser',uid=user.user_id) }}">delete user</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  </table>
+  <hr>
+  <form action="{{ url_for('settings') }}" method=post class=settings>
+      username: <input type=input name=username size=4><br>
+      password: <input type=password name=pw size=4><br>
+      admin: <input type=checkbox name=admin><br>
+      <input type=submit value=add><br>
+  </form>
+  {% endif %}
+{% endblock %}

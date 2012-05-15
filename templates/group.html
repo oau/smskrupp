@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block body %}
+  <div>
+  {% if session.userid %}
+      {% for group in groups %}
+        <a href="{{ url_for('groups') }}{{group.name}}">{{ group.name }}</a>
+      {% else %}
+        <em>no groups</em>
+      {% endfor %}
+      {% if error %}<p class=error><strong>Error:</strong> {{ error }}{% endif %}
+          <br>
+          <br>
+      {% if name %}
+          <h2>{{name}}</h2>
+          <ul class=groups>
+          <table>
+          {% for member in members %}
+            <tr>
+                <td>
+                    {% if member.sender %} <b>s</b> {% endif %}
+                    {% if member.admin %} <b>a</b> {% endif %}
+                </td>
+                <td>{{ member.alias }}</td>
+                <td> {{ member.number }} </td>
+                <td>
+                    <a href="{{ url_for('remove_member', mid=member.id) }}">remove</a>
+                </td>
+             </tr>
+          {% else %}
+            <tr>
+                <td><em>no members</em></td>
+            </tr>
+          {% endfor %}
+          </table>
+          <br>
+          <b>add member</b>
+          <form action="{{ url_for('groups') }}{{ name }}" method=post class=add-member>
+              alias: <input type=text size=30 name=alias><br>
+              number: <input type=text size=30 name=number><br>
+              sender: <input type=checkbox name=sender><br>
+              admin: <input type=checkbox name=admin><br>
+              <input type=submit value=add>
+          </form>
+      {% else %}
+          <b>add group</b>
+          <form action="{{ url_for('groups') }}" method=post class=add-group>
+              name: <input type=text size=30 name=name><br>
+              <input type=submit value=add>
+          </form>
+      {% endif %}
+  {% endif %}
+  <div>
+{% endblock %}
