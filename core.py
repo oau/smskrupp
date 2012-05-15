@@ -2,6 +2,7 @@ from config import config
 import sqlite3
 import gammu.smsd
 from time import strftime, localtime
+import bcrypt
 
 def normalize_number(number):
     if number.startswith('07'):
@@ -18,21 +19,10 @@ class Data:
         self.cursor = self.conn.cursor()
 
     def setup_db(self):
-        c = self.cursor
-        c.execute("CREATE TABLE IF NOT EXISTS qq_groups "+
-                  "(id integer primary key autoincrement, name varchar(50))")
-        c.execute("CREATE TABLE IF NOT EXISTS qq_groupMembers "+
-                  "(id integer primary key autoincrement, number varchar(22),"+
-                  "groupId integer not null, alias varchar(50))")
-        c.execute("CREATE TABLE IF NOT EXISTS qq_sendmap "+
-                  "(id integer primary key autoincrement, "+
-                  "memberId not null, dest varchar(22) not null, "+
-                  "keyword varchar(32) not null)")
-        c.execute("CREATE TABLE IF NOT EXISTS qq_adminmap "+
-                  "(id integer primary key autoincrement, "+
-                  "memberId integer not null, dest varchar(22) not null, "+
-                  "keyword varchar(32) not null)")
-        self.conn.commit()
+        '''Creates the database tables.'''
+        with open('sql/schema.sql','r') as f:
+            self.cursor.executescript(f.read())
+            self.conn.commit()
 
     def add_number(self, number, alias, group_id):
         ''' updates alias if number already exists in group
@@ -106,6 +96,14 @@ class Data:
             group_id = row[0]
         return group_id
 
+    def remove_group(self, gid):
+        c = self.cursor
+        c.execute("delete from qq_groupMembers where groupId=?",
+                  (gid,))
+        c.execute("delete from qq_groups where id=?",
+                  (gid,))
+        self.conn.commit()
+
     def get_group_senders(self, group_id):
         c = self.cursor
         c.execute('select m.number from qq_groupMembers m '+
@@ -165,7 +163,7 @@ class Data:
 
     def get_group_members(self, group_id):
         c = self.cursor
-        c.execute('select number,alias,s.id,a.id from qq_groupMembers m '+
+        c.execute('select number,alias,s.id,a.id,m.id from qq_groupMembers m '+
                 'left join qq_sendmap s on m.id=s.memberId '+
                 'left join qq_adminmap a on m.id=a.memberId '+
                 'where m.groupId=?',
@@ -174,7 +172,7 @@ class Data:
         for row in c:
             sender = row[2] != None
             admin = row[3] != None
-            members.append({'number':row[0],'alias':row[1],'sender':sender,'admin':admin})
+            members.append({'number':row[0],'alias':row[1],'sender':sender,'admin':admin, 'id': row[4]})
         return members
 
     def get_groups(self):
@@ -212,6 +210,16 @@ class Data:
         for row in c:
             ret.append(row[0])
         return ret
+
+    def get_member_info(self, member_id):
+        c = self.cursor
+        c.execute('select m.number,m.alias,m.groupId,g.name from qq_groupMembers m '
+                +'left join qq_groups g on g.id = m.groupId where m.id=?',
+                (member_id,))
+        x = c.fetchone()
+        if x:
+            return {'number': x[0], 'alias': x[1], 'groupId':x[2], 'groupName':x[3]}
+        return None
 
     def _calculate_udh_part(self, udh):
         if not udh:
@@ -288,6 +296,78 @@ class Data:
         if self.conn:
             self.conn.close()
             self.conn = None
+    
+    def add_webuser(self, username, pw, privilege):
+        c = self.cursor
+        h = bcrypt.hashpw(pw,bcrypt.gensalt())
+        c.execute('insert into qq_webUsers (username,hash,privilege) values (?,?,?)',
+                (username,h,privilege))
+        self.conn.commit()
+
+    def get_webusers(self):
+        c = self.cursor
+        c.execute('select u.id,u.username,u.privilege,g.id,g.name from qq_webUsers u '
+                +'left join qq_webUserGroups wg on wg.userId = u.id '
+                +'left join qq_groups g on g.id = wg.groupId '
+                +'order by u.id')
+        ret = []
+        seen = []
+        for row in c:
+            if row[0] in seen:
+                ret[-1]['groups'].append({'group_id':row[3],'group_name':row[4]})
+            else:
+                seen.append(row[0])
+                ret.append({'user_id':row[0],'username':row[1],'privilege':row[2],'groups':[]})
+                if row[3]:
+                    ret[-1]['groups'].append({'group_id':row[3],'group_name':row[4]})
+
+        return ret
+
+
+    def get_webuser_groups(self, webuser_id):
+        c = self.cursor
+        c.execute('select groupId,name from qq_webUserGroups wg '
+            +'left join qq_groups g on g.id=wg.groupId where userId=?',
+                (webuser_id,))
+        return [{'id':row[0],'name':row[1]} for row in c]
+
+    def set_webuser_group(self, webuser_id, group_id):
+        c = self.cursor
+        c.execute('insert or ignore into qq_webUserGroups (userId,groupId) values (?,?)',
+                (webuser_id, group_id))
+        self.conn.commit()
+
+    def remove_webuser(self, webuser_id):
+        c = self.cursor
+        c.execute('delete from qq_webUserGroups where userId=?',
+                (webuser_id,))
+        c.execute('delete from qq_webUsers where id=?',
+                (webuser_id,))
+        self.conn.commit()
+
+    def remove_webuser_group(self, webuser_id, group_id):
+        c = self.cursor
+        c.execute('delete from qq_webUserGroups where userId=? and groupId=?',
+                (webuser_id, group_id))
+        self.conn.commit()
+
+    def set_webuser_pw(self, user_id, pw):
+        h = bcrypt.hashpw(pw,bcrypt.gensalt())
+        c = self.cursor
+        c.execute('update qq_webUsers set hash=? where id=?',
+                (h,user_id))
+        self.conn.commit()
+
+    def check_webuser_login(self, username, password):
+        c = self.cursor
+        c.execute('select username,hash,privilege,id from qq_webUsers where username=?',
+                (username,))
+        row = c.fetchone()
+        if row:
+            hashed = row[1]
+            if bcrypt.hashpw(password, hashed) == hashed:
+                return row[2],row[3]
+        return 0,0
 
 class Doer:
     def __init__(self):

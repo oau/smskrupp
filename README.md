@@ -10,6 +10,10 @@ On debian:
 
     apt-get install gammu-smsd python-gammu sqlite3 libdbi-dev libsqlite3-dev libdbd-sqlite3
 
+If you want the webapp you also need:
+
+    apt-get install python-bcrypt python-flask
+
 Setting up the db:
 
     $ sqlite3 smskrupp.db < sql/*.sql

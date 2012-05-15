@@ -24,3 +24,17 @@ id integer primary key autoincrement,
 memberId not null,
 dest varchar(22) not null, 
 keyword varchar(32) not null);
+
+DROP TABLE IF EXISTS qq_webUsers;
+CREATE TABLE qq_webUsers (
+id integer primary key autoincrement,
+username varchar(32) not null,
+hash char(60) not null,
+privilege integer not null,
+unique (username));
+
+DROP TABLE IF EXISTS qq_webUserGroups;
+CREATE TABLE qq_webUserGroups (
+userId integer not null,
+groupId integer not null,
+unique (userId,groupId));
