@@ -4,7 +4,8 @@ import core
 
 doer = None
 try:
-    doer = core.Doer()
+    sender = core.Sender()
+    doer = core.Doer(sender)
     doer.run()
 finally:
     if doer:

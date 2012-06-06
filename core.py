@@ -20,7 +20,7 @@ class Data:
 
     def setup_db(self):
         '''Creates the database tables.'''
-        with open('sql/schema.sql','r') as f:
+        with open('sql/smskrupp.sql','r') as f:
             self.cursor.executescript(f.read())
             self.conn.commit()
 
@@ -38,38 +38,18 @@ class Data:
         self.conn.commit()
         return self.get_member_id(number,group_id)
 
-    #def add_sender(self, number, dest, keyword=""):
-    def set_sender(self, dest, keyword="", member_id=None, number=None, group_id=None):
-        ''' requires either member_id or number+group_id
-        '''
-        if not member_id:
-            if number and group_id:
-                member_id = self.get_member_id(number, group_id)
-            else:
-                raise TypeError("Didn't get the required kw params")
-
-        if member_id:
-            c = self.cursor
-            c.execute("insert into qq_sendmap (memberId,dest,keyword) "+
-                      "values (?,?,?)",
-                      (member_id, dest, keyword))
-            self.conn.commit()
-
-    def set_admin(self, dest, keyword="", member_id=None, number=None, group_id=None):
-        ''' requires either member_id or number+group_id
-        '''
-        if not member_id:
-            if number and group_id:
-                member_id = self.get_member_id(number, group_id)
-            else:
-                raise TypeError("Didn't get the required kw params")
-
-        if member_id:
-            c = self.cursor
-            c.execute("insert into qq_adminmap (memberId,dest,keyword) "+
-                      "values (?,?,?)",
-                      (member_id, dest, keyword))
-            self.conn.commit()
+    def set_member_info(self, member_id, **kwargs):
+        c = self.cursor
+        if 'sender' in kwargs:
+            c.execute("update qq_groupMembers set sender=? where id=?",
+                    (kwargs['sender'],member_id))
+        if 'admin' in kwargs:
+            c.execute("update qq_groupMembers set admin=? where id=?",
+                    (kwargs['admin'],member_id))
+        if 'alias' in kwargs:
+            c.execute("update qq_groupMembers set alias=? where id=?",
+                    (kwargs['alias'],member_id))
+        self.conn.commit()
 
     def remove_number(self, member_id=None, number=None, group_id=None):
         if not member_id:
@@ -84,11 +64,13 @@ class Data:
                       (member_id,))
             self.conn.commit()
 
-    def add_group(self, name):
+    def add_group(self, name, keyword, phone):
+        ''' create a group and return id of the created group
+        '''
         c = self.cursor
-        c.execute("insert into qq_groups (name) "+
-                  "values (?)",
-                  (name,))
+        c.execute("insert into qq_groups (name,keyword,phone) "+
+                  "values (?,?,?)",
+                  (name,keyword,phone))
         self.conn.commit()
         c.execute('select id from qq_groups where name=?', (name,))
         group_id = None
@@ -97,8 +79,12 @@ class Data:
         return group_id
 
     def remove_group(self, gid):
+        ''' completely remove a group and all it's members
+        '''
         c = self.cursor
         c.execute("delete from qq_groupMembers where groupId=?",
+                  (gid,))
+        c.execute("delete from qq_webUserGroups where groupId=?",
                   (gid,))
         c.execute("delete from qq_groups where id=?",
                   (gid,))
@@ -106,24 +92,17 @@ class Data:
 
     def get_group_senders(self, group_id):
         c = self.cursor
-        c.execute('select m.number from qq_groupMembers m '+
-                  'join qq_sendmap s on m.id=s.memberId '+
-                  'where m.groupId=?', (group_id,))
-        senders = []
-        for row in c:
-            senders.append(row[0])
-        return senders
+        c.execute('select id, number, alias from qq_groupMembers '+
+                  'where groupId=? and sender=1', (group_id,))
+        return [{'id':row[0],'number':row[1],'alias':row[2]} for row in c]
 
     def get_group_admins(self, group_id):
         c = self.cursor
-        c.execute('select m.number from qq_groupMembers m '+
-                  'join qq_adminmap a on m.id=a.memberId '+
-                  'where m.groupId=?', (group_id,))
-        admins = []
-        for row in c:
-            admins.append(row[0])
-        return admins
+        c.execute('select id,number,alias from qq_groupMembers '+
+                  'where groupId=? and admin=1', (group_id,))
+        return [{'id':row[0],'number':row[1],'alias':row[2]} for row in c]
 
+    """
     def get_admin(self, src, dest, msg):
         ''' return pair (cmd, groupId)
         '''
@@ -160,28 +139,40 @@ class Data:
                 msg_out = msg[len(keyword):]
                 return msg_out,row[1]
         return None
+        """
 
     def get_group_members(self, group_id):
+        ''' return array of dicts describing members (id, number, alias, sender, admin)
+        '''
         c = self.cursor
-        c.execute('select number,alias,s.id,a.id,m.id from qq_groupMembers m '+
+        c.execute('select m.id,number,alias,s.id,a.id from qq_groupMembers m '+
                 'left join qq_sendmap s on m.id=s.memberId '+
                 'left join qq_adminmap a on m.id=a.memberId '+
                 'where m.groupId=?',
                 (group_id,))
-        members = []
-        for row in c:
-            sender = row[2] != None
-            admin = row[3] != None
-            members.append({'number':row[0],'alias':row[1],'sender':sender,'admin':admin, 'id': row[4]})
-        return members
+        return [{'id':row[0], 'number':row[1], 'alias':row[2], 'sender':(row[3]!=None),
+            'admin':(row[4]!=None)} for row in c]
 
-    def get_groups(self):
+    def get_groups(self, phone=None, sender=None):
+        ''' returns array of dicts describing groups (id, name keyword, phone)
+        '''
         c = self.cursor
-        c.execute('select id,name from qq_groups order by name asc')
-        ret = []
-        for row in c:
-            ret.append(row)
-        return ret
+        if phone and sender:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? and g.phone=? order by g.name asc',
+                    (sender,phone))
+        elif sender:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? order by g.name asc',
+                    (sender,))
+        elif phone:
+            c.execute('select id,name, keyword, phone from qq_groups where phone=? order by name asc',
+                    (phone,))
+        else:
+            c.execute('select id,name,keyword,phone from qq_groups order by name asc')
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
 
     def get_group_id(self,name):
         c = self.cursor
@@ -213,12 +204,12 @@ class Data:
 
     def get_member_info(self, member_id):
         c = self.cursor
-        c.execute('select m.number,m.alias,m.groupId,g.name from qq_groupMembers m '
+        c.execute('select m.id,m.number,m.alias,m.groupId,g.name from qq_groupMembers m '
                 +'left join qq_groups g on g.id = m.groupId where m.id=?',
                 (member_id,))
         x = c.fetchone()
         if x:
-            return {'number': x[0], 'alias': x[1], 'groupId':x[2], 'groupName':x[3]}
+            return {'id': x[0], 'number': x[1], 'alias': x[2], 'groupId':x[3], 'groupName':x[4]}
         return None
 
     def _calculate_udh_part(self, udh):
@@ -323,7 +314,6 @@ class Data:
 
         return ret
 
-
     def get_webuser_groups(self, webuser_id):
         c = self.cursor
         c.execute('select groupId,name from qq_webUserGroups wg '
@@ -370,21 +360,112 @@ class Data:
         return 0,0
 
 class Doer:
-    def __init__(self):
-        self.smsd = gammu.smsd.SMSD(config.smsdrc)
-        self.log = open(config.log, "a")
+    def __init__(self, sender):
         self.data = Data()
+        self.sender = sender
 
     def cleanup(self):
-        if self.log:
-            self.log.close()
-            self.log = None
         self.data.cleanup()
 
     def _log(self, text):
-        t = strftime("%Y-%m-%d %H:%M:%S", localtime())
-        self.log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
-        self.log.flush()
+        with open(config.log, "a") as log:
+            t = strftime("%Y-%m-%d %H:%M:%S", localtime())
+            log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
+
+
+    def run(self):
+        self._log("starting doer")
+        messages = self.data.get_unprocessed()
+        for m in messages:
+            ids,src,phone,orig_msg = m['ids'],m['src'],m['phone'],m['text']
+            groups = self.data.get_groups(phone=phone, sender=src)
+            self._log("found message: %s %s->%s '%s'"%(str(ids),src,phone,orig_msg))
+
+            status = 'unknown'
+            lmsg = orig_msg.lower().strip()
+            if lmsg == 'stop' or lmsg == 'stopp':
+                for i in self.data.get_member_ids(src):
+                    self.data.remove_number(member_id=i)
+                status = 'stop'
+            elif lmsg.startswith(config.admin_prefix):
+                admin_cmd = lmsg[len(config.admin_prefix):]
+                first_word = admin_cmd.split(" ")[0]
+                group = None
+                for g in groups:
+                    if first_word == g['keyword']:
+                        admin_cmd = admin_cmd[len(first_word):].strip()
+                        group = g
+                        break
+
+                if not group and len(groups) == 1:
+                    # check if user is only in one group
+                    group = groups[0]
+
+                if not group:
+                    self._log("Warning: Invalid admin command '%s' from %s to %s'"%(orig_msg,src,phone))
+                    continue
+
+                self._log("doing command '%s' to group %s"%(admin_cmd,group['name']))
+                status = 'admin'
+                if admin_cmd.startswith('add sender '):
+                    number = normalize_number(admin_cmd[len('add sender '):])
+                    if number:
+                        mid = self.data.add_number(number, 'noname', group['id'])
+                        self.data.set_member_info(mid, sender=True)
+                    else:
+                        self._log("warning: couldn't find number in add command")
+                elif admin_cmd.startswith('add admin '):
+                    number = normalize_number(admin_cmd[len('add admin '):])
+                    if number:
+                        mid = self.data.add_number(number, 'noname', group['id'])
+                        self.data.set_member_info(mid, sender=True, admin=True)
+                    else:
+                        self._log("error: couldn't find number in add command")
+                elif admin_cmd.startswith('add '):
+                    number = normalize_number(admin_cmd[len('add '):])
+                    if number:
+                        self.data.add_number(number, 'noname', group['id'])
+                    else:
+                        self._log("error: couldn't find number in add command")
+                else:
+                    self._log("error: unknown admin command!")
+            elif lmsg.startswith(config.send_prefix):
+                send_cmd = orig_msg[len(config.admin_prefix):]
+                lfirst_word = send_cmd.split(" ")[0].lower()
+                for g in groups:
+                    if lfirst_word == g['keyword'].lower():
+                        # found group
+                        send_msg = config.send_prefix + g['keyword'] + " " + send_cmd[len(lfirst_word):].strip()
+                        group = g
+                        self._log("doing sendout to group %s"%group['name'])
+                        members = self.data.get_group_members(group['id'])
+                        for member in members:
+                            self.sender.send(member['number'],send_msg)
+                        status = 'send'
+                        break
+            elif len(groups) == 1:
+                # if only in 1 group and does not start with admin or sendout prefix, do a normal sendout
+                group = groups[0]
+                self._log("doing sendout to group %s"%group['name'])
+                members = self.data.get_group_members(group['id'])
+                send_msg = config.send_prefix + group['keyword'] + " " + orig_msg
+                for member in members:
+                    self.sender.send(member['number'],send_msg)
+                status = 'send'
+                
+
+            for i in ids:
+                self.data.set_processed(i,status)
+        self.cleanup()
+
+class Sender:
+    def __init__(self):
+        self.smsd = gammu.smsd.SMSD(config.smsdrc)
+
+    def _log(self, text):
+        with open(config.log, "a") as log:
+            t = strftime("%Y-%m-%d %H:%M:%S", localtime())
+            log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
 
     def send(self, dest, msg):
         # this length calculation will fail will not work for some special
@@ -413,61 +494,4 @@ class Doer:
                 # Actually send the message
                 self._log("sending part of message: "+str(message));
                 self.smsd.InjectSMS([message])
-
-    def run(self):
-        self._log("starting doer")
-        messages = self.data.get_unprocessed()
-        for m in messages:
-            ids,src,dest,msg = m['ids'],m['src'],m['phone'],m['text']
-            self._log("found message: %s %s->%s '%s'"%(str(ids),src,dest,msg))
-
-            admin_cmd = self.data.get_admin(src,dest,msg)
-            sender_cmd = self.data.get_sendout(src,dest,msg)
-            status = 'unknown'
-            lmsg = msg.lower().strip()
-            if lmsg == 'stop' or lmsg == 'stopp':
-                for i in self.data.get_member_ids(src):
-                    self.data.remove_number(member_id=i)
-                status = 'stop'
-
-            if status == 'unknown' and admin_cmd:
-                keyword,cmd,group = admin_cmd
-                cmd = cmd.lower()
-                self._log("doing command '%s' to group %d"%(cmd,group))
-                status = 'admin'
-                if cmd.startswith('add sender '):
-                    number = normalize_number(cmd[len('add sender '):])
-                    if number:
-                        mid = self.data.add_number(number, 'noname', group)
-                        self.data.set_sender(dest, member_id=mid, keyword=keyword)
-                    else:
-                        self._log("warning: couldn't find number in add command")
-                elif cmd.startswith('add admin '):
-                    number = normalize_number(cmd[len('add admin '):])
-                    if number:
-                        mid = self.data.add_number(number, 'noname', group)
-                        self.data.set_sender(dest, member_id=mid, keyword=keyword)
-                        self.data.set_admin(dest, member_id=mid, keyword=keyword)
-                    else:
-                        self._log("error: couldn't find number in add command")
-                elif cmd.startswith('add '):
-                    number = normalize_number(cmd[len('add '):])
-                    if number:
-                        self.data.add_number(number, 'noname', group)
-                    else:
-                        self._log("error: couldn't find number in add command")
-                else:
-                    self._log("error: unknown admin command!")
-
-            if status == 'unknown' and sender_cmd:
-                msg,group = sender_cmd
-                self._log("doing sendout to group %d"%group)
-                members = self.data.get_group_members(group)
-                for member in members:
-                    self.send(member['number'],msg)
-                status = 'send'
-
-            for i in ids:
-                self.data.set_processed(i,status)
-        self.cleanup()
 
