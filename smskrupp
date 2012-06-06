@@ -2,14 +2,15 @@
 import sys
 
 import core
+from config import config
 
 def usage():
-    print("%s add-group <name>"%sys.argv[0])
+    print("%s add-group <name> <keyword>"%sys.argv[0])
     print("%s list-groups"%sys.argv[0])
     print("%s list-members <group>"%sys.argv[0])
     print("%s add-member <number> <alias> <group>"%sys.argv[0])
-    print("%s set-sender <number> <group> <phone> [keyword]"%sys.argv[0])
-    print("%s set-admin <number> <group> <phone> [keyword]"%sys.argv[0])
+    print("%s set-sender <number> <group>"%sys.argv[0])
+    print("%s set-admin <number> <group>"%sys.argv[0])
     print("%s fake-incoming <src> <phone> <msg>"%sys.argv[0])
     sys.exit(1)
 
@@ -19,12 +20,12 @@ if len(sys.argv) < 2:
 data = core.Data()
 
 if sys.argv[1] == 'add-group':
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         usage()
-    data.add_group(sys.argv[2])
+    data.add_group(sys.argv[2], sys.argv[3], config.default_phone)
 elif sys.argv[1] == 'list-groups':
-    for i,name in data.get_groups():
-        print name
+    for g in data.get_groups():
+        print g['name']
 elif sys.argv[1] == 'list-members':
     if len(sys.argv) != 3:
         usage()
@@ -34,7 +35,8 @@ elif sys.argv[1] == 'list-members':
         sys.exit(1)
     for member in data.get_group_members(gid):
         if member['sender']: s = 's'
-        else: s = ' '
+        else:
+            s = ' '
         if member['admin']: s = 'a'+s
         else: s = ' '+s
         s += ' %s [%s]'%(member['alias'],member['number'])
@@ -53,12 +55,11 @@ elif sys.argv[1] == 'add-member':
         sys.exit(1)
     data.add_number(number, alias, group_id)
 elif sys.argv[1] == 'set-sender':
-    if len(sys.argv) != 5 and len(sys.argv) != 6:
+    if len(sys.argv) != 4:
         usage()
 
-    number,group,phone = sys.argv[2:5]
+    number,group = sys.argv[2:]
     number = core.normalize_number(number)
-    keyword = sys.argv[5] if len(sys.argv) == 6 else ""
     group_id = data.get_group_id(group)
     if not group_id:
         print "group error!"
@@ -67,14 +68,13 @@ elif sys.argv[1] == 'set-sender':
     if not mid:
         print "no such number!"
         sys.exit(1)
-    data.set_sender(phone, member_id=mid, keyword=keyword)
+    data.set_member_info(mid, sender=True)
 elif sys.argv[1] == 'set-admin':
-    if len(sys.argv) != 5 and len(sys.argv) != 6:
+    if len(sys.argv) != 4:
         usage()
 
-    number,group,phone = sys.argv[2:5]
+    number,group = sys.argv[2:]
     number = core.normalize_number(number)
-    keyword = sys.argv[5] if len(sys.argv) == 6 else ""
     group_id = data.get_group_id(group)
     if not group_id:
         print "group error!"
@@ -83,7 +83,7 @@ elif sys.argv[1] == 'set-admin':
     if not mid:
         print "no such number!"
         sys.exit(1)
-    data.set_admin(phone, member_id=mid, keyword=keyword)
+    data.set_member_info(mid, admin=True)
 elif sys.argv[1] == 'fake-incoming':
     if len(sys.argv) != 5:
         usage()
