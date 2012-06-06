@@ -124,6 +124,17 @@ class TestDoer:
         self.Doer.run()
         assert 0 == len(self.data.get_group_members(gid))
 
+    def test_run_admin_command_add_unauthorized(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword", phone)
+        self.data.add_number(number, "alias", gid)
+        self.data.fake_incoming(number, phone, "/add 073123")
+        self.Doer.run()
+        assert not "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
+        assert not "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
+        assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
+
     def test_run_admin_command_add(self):
         number = "+46736000001"
         phone = "phone1"
@@ -197,6 +208,30 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
 
+    def test_run_sendout_unauthorized(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword", phone)
+        self.data.add_number(number, "alias", gid)
+
+        s = FakeSender()
+        doer = core.Doer(s)
+        self.data.fake_incoming(number, phone, "test")
+        doer.run()
+        assert 0 == len(s.sendouts)
+
+    def test_run_sendout_keyword_unauthorized(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword", phone)
+        self.data.add_number(number, "alias", gid)
+
+        s = FakeSender()
+        doer = core.Doer(s)
+        self.data.fake_incoming(number, phone, "#keyword test")
+        doer.run()
+        assert 0 == len(s.sendouts)
+
     def test_run_sendout(self):
         number = "+46736000001"
         phone = "phone1"
@@ -208,7 +243,6 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "test")
         doer.run()
-        print s.sendouts
         assert 1 == len(s.sendouts)
         assert (number, "#keyword test") == s.sendouts[0]
 
@@ -223,7 +257,6 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "#keyword test")
         doer.run()
-        print s.sendouts
         assert 1 == len(s.sendouts)
         assert (number, "#keyword test") == s.sendouts[0]
 
