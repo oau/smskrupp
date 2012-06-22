@@ -26,8 +26,22 @@ class Data:
 
     def add_number(self, number, alias, group_id):
         ''' updates alias if number already exists in group
+            does nothing and returns None if alias already exists
+            alias = None will generate a new unique alias
         '''
         c = self.cursor
+        if alias == None:
+            base = "noname"
+            c.execute("select alias from qq_groupMembers "+
+                      "where alias like ? order by alias ",
+                      (base+'%',))
+            max_num = 0
+            for row in c:
+                num = row[0][len(base):]
+                if num.isdigit() and int(num) > max_num:
+                    max_num = int(num)
+            alias = base+str(max_num+1)
+
         c.execute("insert or ignore into qq_groupMembers "+
                   "(number, groupId, alias) "+
                   "values (?,?,?)",
@@ -403,21 +417,21 @@ class Doer:
                     if admin_cmd.startswith('add sender '):
                         number = normalize_number(admin_cmd[len('add sender '):])
                         if number:
-                            mid = self.data.add_number(number, 'noname', group['id'])
+                            mid = self.data.add_number(number, None, group['id'])
                             self.data.set_member_info(mid, sender=True)
                         else:
                             self._log("warning: couldn't find number in add command")
                     elif admin_cmd.startswith('add admin '):
                         number = normalize_number(admin_cmd[len('add admin '):])
                         if number:
-                            mid = self.data.add_number(number, 'noname', group['id'])
+                            mid = self.data.add_number(number, None, group['id'])
                             self.data.set_member_info(mid, sender=True, admin=True)
                         else:
                             self._log("error: couldn't find number in add command")
                     elif admin_cmd.startswith('add '):
                         number = normalize_number(admin_cmd[len('add '):])
                         if number:
-                            self.data.add_number(number, 'noname', group['id'])
+                            self.data.add_number(number, None, group['id'])
                         else:
                             self._log("error: couldn't find number in add command")
                     else:

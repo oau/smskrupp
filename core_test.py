@@ -49,6 +49,23 @@ class TestData:
         assert members[0]['number'] == number
         assert members[0]['alias'] == 'alias'
 
+    def test_add_number_no_alias(self):
+        number1 = "123"
+        number2 = "124"
+        gid = self.data.add_group("group1", "keyword", "123")
+        mid = self.data.add_number(number1, None, gid)
+        mid2 = self.data.add_number(number2, None, gid)
+        members = self.data.get_group_members(gid)
+        assert mid
+        assert mid2
+        assert len(members) == 2
+        assert members[0]['id'] == mid
+        assert members[0]['number'] == number1
+        assert members[0]['alias'] == 'noname1'
+        assert members[1]['id'] == mid2
+        assert members[1]['number'] == number2
+        assert members[1]['alias'] == 'noname2'
+
     def test_remove_number(self):
         number1 = "123"
         number2 = "1235"

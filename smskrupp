@@ -53,7 +53,9 @@ elif sys.argv[1] == 'add-member':
     if not group_id:
         print "group error!"
         sys.exit(1)
-    data.add_number(number, alias, group_id)
+    mid = data.add_number(number, alias, group_id)
+    if mid == None:
+        print "error: alias already exists"
 elif sys.argv[1] == 'set-sender':
     if len(sys.argv) != 4:
         usage()
