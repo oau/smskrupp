@@ -141,6 +141,15 @@ class TestDoer:
         self.Doer.run()
         assert 0 == len(self.data.get_group_members(gid))
 
+    def test_run_stop_command_prefix(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword", phone)
+        self.data.add_number(number, "alias", gid)
+        self.data.fake_incoming(number, phone, "/keyword stop")
+        self.Doer.run()
+        assert 0 == len(self.data.get_group_members(gid))
+
     def test_run_admin_command_add_unauthorized(self):
         number = "+46736000001"
         phone = "phone1"
@@ -157,7 +166,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/add 073123")
         self.Doer.run()
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
@@ -169,7 +178,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/Add Sender 073123")
         self.Doer.run()
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
@@ -181,7 +190,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/add admin 073123")
         self.Doer.run()
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
@@ -193,7 +202,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/keyword add 073123")
         self.Doer.run()
         print self.data.get_group_members(gid)
@@ -206,7 +215,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/KEYWORD Add Sender 073123")
         self.Doer.run()
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
@@ -218,7 +227,7 @@ class TestDoer:
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword", phone)
         mid = self.data.add_number(number, "alias", gid)
-        self.data.set_member_info(mid, admin=True)
+        self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/KEyWord add admin 073123")
         self.Doer.run()
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from config import config
 import sqlite3
 import gammu.smsd
@@ -180,6 +182,22 @@ class Data:
                     (phone,))
         else:
             c.execute('select id,name,keyword,phone from qq_groups order by name asc')
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
+
+    def get_send_groups(self, sender, phone=None):
+        ''' returns array of dicts describing groups (id, name keyword, phone) where the sender can send
+        '''
+        c = self.cursor
+        if phone:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? and g.phone=? and m.sender=1 order by g.name asc',
+                    (sender,phone))
+        else:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? and m.sender=1 order by g.name asc',
+                    (sender,))
         return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
 
     def get_group_id(self,name):
@@ -378,100 +396,119 @@ class Doer:
             t = strftime("%Y-%m-%d %H:%M:%S", localtime())
             log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
 
+    def _parse_action(self, src, phone, orig_msg):
+        groups = self.data.get_groups(phone=phone, sender=src)
+        send_groups = self.data.get_send_groups(src, phone=phone)
+        lmsg = orig_msg.lower().strip()
+        if lmsg == 'stop' or lmsg == 'stopp':
+            return {'action':'stop', 'groups':groups}
+        if lmsg.startswith(config.admin_prefix):
+            admin_cmd = lmsg[len(config.admin_prefix):]
+            first_word = admin_cmd.split(" ")[0]
+            group = None
+
+            # check if we have keyword
+            for g in groups:
+                if first_word == g['keyword']:
+                    admin_cmd = admin_cmd[len(first_word):].strip()
+                    group = g
+                    break
+
+            if not group:
+                # no keyword
+                if len(groups) == 1 and admin_cmd in ["stop", "stopp"]:
+                    return {'action':'stop', 'groups':groups}
+
+                if len(send_groups) == 1:
+                    group = send_groups[0]
+
+            if not group:
+                # can't figure out group, give up
+                return {'action':'invalid'}
+
+            if admin_cmd in ["stop", "stopp"]:
+                return {'action':'stop', 'groups':groups}
+
+
+            number = None
+            action = None
+            if admin_cmd.startswith('add sender '):
+                action = 'add_sender'
+                number = normalize_number(admin_cmd[len('add sender '):])
+            elif admin_cmd.startswith('add admin '):
+                action = 'add_admin'
+                number = normalize_number(admin_cmd[len('add admin '):])
+            elif admin_cmd.startswith('add '):
+                action = 'add'
+                number = normalize_number(admin_cmd[len('add '):])
+            if action and number:
+                return {'action':action, 'number':number, 'group':group}
+            else:
+                return {'action':'invalid'}
+
+        send_msg = None
+        if lmsg.startswith(config.send_prefix):
+            send_cmd = orig_msg[len(config.send_prefix):]
+            lfirst_word = send_cmd.split(" ")[0].lower()
+            for g in groups:
+                if lfirst_word == g['keyword'].lower():
+                    send_msg = "%s%s %s"%(config.send_prefix,g['keyword'],
+                            send_cmd[len(lfirst_word):].strip())
+                    group = g
+                    break
+        elif len(groups) == 1:
+            # if only in 1 group and does not start with admin or sendout prefix,
+            # do a normal sendout
+            group = groups[0]
+            send_msg = config.send_prefix + group['keyword'] + " " + orig_msg
+        if send_msg and group:
+            return {'action':'sendout', 'group':group, 'msg':send_msg}
+
+        return {'action':'invalid'}
+
+    def _handle_message(self, ids, src, phone, orig_msg):
+        action = self._parse_action(src,phone,orig_msg)
+
+        status = 'invalid'
+        if action['action'] == 'stop':
+            for g in action['groups']:
+                self.data.remove_number(number=src, group_id=g['id'])
+            status = 'stop'
+        elif action['action'] == 'sendout':
+            group = action['group']
+            msg = action['msg']
+            if not src in [m['number'] for m in self.data.get_group_senders(group['id'])]:
+                self._log("Warning: Unauthorized sendout command '%s' from %s to %s"%
+                        (orig_msg,src,phone))
+                status = 'unauthorized'
+            else:
+                self._log("doing sendout to group %s"%group['name'])
+                members = self.data.get_group_members(group['id'])
+                for member in members:
+                    self.sender.send(member['number'],msg)
+                status = 'send'
+        elif action['action'] in ['add','add_sender', 'add_admin']:
+            group = action['group']
+            if not src in [m['number'] for m in self.data.get_group_admins(group['id'])]:
+                self._log("Warning: Unauthorized admin command '%s' from %s to %s"%(orig_msg,src,phone))
+                status = 'unauthorized'
+            else:
+                status = 'admin'
+                self._log("doing command '%s' to group %s"%(action['action'],group['name']))
+                mid = self.data.add_number(action['number'], None, group['id'])
+                if action['action'] == 'add_sender':
+                    self.data.set_member_info(mid, sender=True)
+                elif action['action'] == 'add_admin':
+                    self.data.set_member_info(mid, sender=True, admin=True)
+
+        for i in ids:
+            self.data.set_processed(i,status)
 
     def run(self):
         self._log("starting doer")
         messages = self.data.get_unprocessed()
         for m in messages:
-            ids,src,phone,orig_msg = m['ids'],m['src'],m['phone'],m['text']
-            groups = self.data.get_groups(phone=phone, sender=src)
-            self._log("found message: %s %s->%s '%s'"%(str(ids),src,phone,orig_msg))
-
-            status = 'invalid'
-            lmsg = orig_msg.lower().strip()
-            if lmsg == 'stop' or lmsg == 'stopp':
-                for i in self.data.get_member_ids(src):
-                    self.data.remove_number(member_id=i)
-                status = 'stop'
-            elif lmsg.startswith(config.admin_prefix):
-                admin_cmd = lmsg[len(config.admin_prefix):]
-                first_word = admin_cmd.split(" ")[0]
-                group = None
-                for g in groups:
-                    if first_word == g['keyword']:
-                        admin_cmd = admin_cmd[len(first_word):].strip()
-                        group = g
-                        break
-
-                if not group and len(groups) == 1:
-                    # check if user is only in one group
-                    group = groups[0]
-
-                if not group:
-                    self._log("Warning: Invalid admin command '%s' from %s to %s"%(orig_msg,src,phone))
-                elif not src in [m['number'] for m in self.data.get_group_admins(group['id'])]:
-                    self._log("Warning: Unauthorized admin command '%s' from %s to %s"%(orig_msg,src,phone))
-                else:
-                    self._log("doing command '%s' to group %s"%(admin_cmd,group['name']))
-                    status = 'admin'
-                    if admin_cmd.startswith('add sender '):
-                        number = normalize_number(admin_cmd[len('add sender '):])
-                        if number:
-                            mid = self.data.add_number(number, None, group['id'])
-                            self.data.set_member_info(mid, sender=True)
-                        else:
-                            self._log("warning: couldn't find number in add command")
-                    elif admin_cmd.startswith('add admin '):
-                        number = normalize_number(admin_cmd[len('add admin '):])
-                        if number:
-                            mid = self.data.add_number(number, None, group['id'])
-                            self.data.set_member_info(mid, sender=True, admin=True)
-                        else:
-                            self._log("error: couldn't find number in add command")
-                    elif admin_cmd.startswith('add '):
-                        number = normalize_number(admin_cmd[len('add '):])
-                        if number:
-                            self.data.add_number(number, None, group['id'])
-                        else:
-                            self._log("error: couldn't find number in add command")
-                    else:
-                        self._log("error: unknown admin command!")
-            elif lmsg.startswith(config.send_prefix):
-                send_cmd = orig_msg[len(config.admin_prefix):]
-                lfirst_word = send_cmd.split(" ")[0].lower()
-                for g in groups:
-                    if lfirst_word == g['keyword'].lower():
-                        # found group
-                        if not src in [m['number'] for m in self.data.get_group_senders(g['id'])]:
-                            self._log("Warning: Unauthorized sendout command '%s' from %s to %s"%
-                                    (orig_msg,src,phone))
-                        else:
-                            send_msg = "%s%s %s"%(config.send_prefix,g['keyword'],
-                                    send_cmd[len(lfirst_word):].strip())
-                            group = g
-                            self._log("doing sendout to group %s"%group['name'])
-                            members = self.data.get_group_members(group['id'])
-                            for member in members:
-                                self.sender.send(member['number'],send_msg)
-                            status = 'send'
-                        break
-            elif len(groups) == 1:
-                # if only in 1 group and does not start with admin or sendout prefix,
-                # do a normal sendout
-                group = groups[0]
-                if not src in [m['number'] for m in self.data.get_group_senders(group['id'])]:
-                    self._log("Warning: Unauthorized sendout command '%s' from %s to %s"%
-                            (orig_msg,src,phone))
-                else:
-                    self._log("doing sendout to group %s"%group['name'])
-                    members = self.data.get_group_members(group['id'])
-                    send_msg = config.send_prefix + group['keyword'] + " " + orig_msg
-                    for member in members:
-                        self.sender.send(member['number'],send_msg)
-                    status = 'send'
-
-            for i in ids:
-                self.data.set_processed(i,status)
+            self._handle_message(m['ids'],m['src'],m['phone'],m['text'])
         self.cleanup()
 
 class Sender:
