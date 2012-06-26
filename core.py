@@ -496,10 +496,18 @@ class Doer:
                 status = 'admin'
                 self._log("doing command '%s' to group %s"%(action['action'],group['name']))
                 mid = self.data.add_number(action['number'], None, group['id'])
+                is_sender,is_admin = False,False
                 if action['action'] == 'add_sender':
                     self.data.set_member_info(mid, sender=True)
+                    is_sender = True
                 elif action['action'] == 'add_admin':
                     self.data.set_member_info(mid, sender=True, admin=True)
+                    is_sender,is_admin = True,True
+
+                user_send_groups = self.data.get_send_groups(action['number'], phone=phone)
+                welcomes = Helper().get_welcomes(action['number'], group['name'], group['keyword'], is_sender, is_admin, user_send_groups)
+                for msg in welcomes:
+                    self.sender.send(action['number'], msg)
 
         for i in ids:
             self.data.set_processed(i,status)
@@ -548,3 +556,26 @@ class Sender:
                 self._log("sending part of message: "+str(message));
                 self.smsd.InjectSMS([message])
 
+class Helper:
+    def get_welcomes(self, number, group_name, group_kw, is_sender, is_admin, send_groups):
+        msg = (u"Välkommen till smslistan %s.\n"
+               u"För att lämna listan skriv ett sms med texten \"%s%s stopp\".")%(group_name,
+                       config.admin_prefix, group_kw)
+        if is_sender:
+            if len(send_groups) == 1:
+                msg += u"\nSkicka ett sms till detta nummret så går det ut till listan."
+            else:
+                msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, group_kw)
+        if is_admin:
+            if len(send_groups) == 1:
+                msg += u"\nFör att lägga till någon till listan, skicka \"%sadd [nummer]\""%(config.admin_prefix)
+            else:
+                msg += u"\nFör att lägga till någon till listan, skicka \"%s%s add [nummer]\""%(config.admin_prefix,group_kw)
+        if len(send_groups) == 2:
+            msg2 = (u"Du är nu med i 2 grupper. "
+                    u"Det betyder att du måste börja varje sms till %s med %s%s och varje sms till %s med %s%s"%
+                    (send_groups[0]['name'],config.send_prefix,send_groups[0]['keyword'],
+                     send_groups[1]['name'],config.send_prefix,send_groups[1]['keyword']))
+            return [msg,msg2]
+        else:
+            return [msg]
