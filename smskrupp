@@ -85,7 +85,7 @@ elif sys.argv[1] == 'set-admin':
     if not mid:
         print "no such number!"
         sys.exit(1)
-    data.set_member_info(mid, admin=True)
+    data.set_member_info(mid, sender=True, admin=True)
 elif sys.argv[1] == 'fake-incoming':
     if len(sys.argv) != 5:
         usage()
