@@ -281,8 +281,7 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "test")
         doer.run()
-        assert 1 == len(s.sendouts)
-        assert (number, "#keyword test") == s.sendouts[0]
+        assert 0 == len(s.sendouts)
 
     def test_run_sendout_prefix(self):
         number = "+46736000001"

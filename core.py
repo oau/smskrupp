@@ -456,11 +456,6 @@ class Doer:
                             send_cmd[len(lfirst_word):].strip())
                     group = g
                     break
-        elif len(groups) == 1:
-            # if only in 1 group and does not start with admin or sendout prefix,
-            # do a normal sendout
-            group = groups[0]
-            send_msg = config.send_prefix + group['keyword'] + " " + orig_msg
         if send_msg and group:
             return {'action':'sendout', 'group':group, 'msg':send_msg}
 
