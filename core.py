@@ -478,6 +478,7 @@ class Doer:
         return {'action':'invalid'}
 
     def _handle_message(self, ids, src, phone, orig_msg):
+        self._log("got message '%s' from %s to %s"%(orig_msg,src,phone))
         action = self._parse_action(src,phone,orig_msg)
 
         status = 'invalid'
