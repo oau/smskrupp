@@ -584,7 +584,7 @@ class Helper:
            msg += u"För att lämna listan skriv ett sms med texten \"stop\"."
         else:
            msg += u"För att lämna listan skriv ett sms med texten \"%s%s stop\"."%(
-                   group_name, config.admin_prefix, group_kw)
+                   config.admin_prefix, group_kw)
         if is_sender:
             msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, group_kw)
         if is_admin:
@@ -601,7 +601,6 @@ class Helper:
                msg += u"För att lämna listan skriv ett sms med texten \"stop\"."
             else:
                msg += u"För att lämna listan skriv ett sms med texten \"%s%s stop\"."%(
-                       g['name'],
                    config.admin_prefix, g['keyword'])
             if g['name'] in send_names:
                 msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, g['keyword'])
