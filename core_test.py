@@ -160,7 +160,8 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 0 # no welcome message
+        assert len(self.sender.sendouts) == 1 # help message
+        assert self.sender.sendouts[0][0] == number
 
     def test_run_admin_command_add(self):
         number = "+46736000001"
@@ -256,6 +257,16 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "test")
         doer.run()
+        assert 1 == len(s.sendouts)
+        assert s.sendouts[0][0] == number
+
+    def test_run_sendout_unknown_number(self):
+        number = "+46736000001"
+        phone = "phone1"
+        s = FakeSender()
+        doer = core.Doer(s)
+        self.data.fake_incoming(number, phone, "test")
+        doer.run()
         assert 0 == len(s.sendouts)
 
     def test_run_sendout_keyword_unauthorized(self):
@@ -281,7 +292,8 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "test")
         doer.run()
-        assert 0 == len(s.sendouts)
+        assert 1 == len(s.sendouts) # test message
+        assert s.sendouts[0][0] == number
 
     def test_run_sendout_prefix(self):
         number = "+46736000001"

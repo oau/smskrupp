@@ -200,6 +200,22 @@ class Data:
                     (sender,))
         return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
 
+    def get_admin_groups(self, sender, phone=None):
+        ''' returns array of dicts describing groups (id, name keyword, phone) where the sender can admin
+        '''
+        c = self.cursor
+        if phone:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? and g.phone=? and m.admin=1 order by g.name asc',
+                    (sender,phone))
+        else:
+            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+                    +'join qq_groups g on g.id = m.groupId '
+                    +'where m.number=? and m.admin=1 order by g.name asc',
+                    (sender,))
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
+
     def get_group_id(self,name):
         c = self.cursor
         c.execute('select id,name from qq_groups where name=?', (name,))
@@ -446,8 +462,8 @@ class Doer:
             else:
                 return {'action':'invalid'}
 
-        send_msg = None
         if lmsg.startswith(config.send_prefix):
+            send_msg = None
             send_cmd = orig_msg[len(config.send_prefix):]
             lfirst_word = send_cmd.split(" ")[0].lower()
             for g in groups:
@@ -456,8 +472,8 @@ class Doer:
                             send_cmd[len(lfirst_word):].strip())
                     group = g
                     break
-        if send_msg and group:
-            return {'action':'sendout', 'group':group, 'msg':send_msg}
+            if send_msg and group:
+                return {'action':'sendout', 'group':group, 'msg':send_msg}
 
         return {'action':'invalid'}
 
@@ -499,10 +515,19 @@ class Doer:
                     self.data.set_member_info(mid, sender=True, admin=True)
                     is_sender,is_admin = True,True
 
+                user_groups = self.data.get_groups(sender=action['number'], phone=phone)
                 user_send_groups = self.data.get_send_groups(action['number'], phone=phone)
-                welcomes = Helper().get_welcomes(action['number'], group['name'], group['keyword'], is_sender, is_admin, user_send_groups)
+                welcomes = Helper().get_welcomes(group['name'], group['keyword'], is_sender, is_admin, user_groups, user_send_groups)
                 for msg in welcomes:
                     self.sender.send(action['number'], msg)
+        elif action['action'] == 'invalid':
+            # send help message
+            user_groups = self.data.get_groups(sender=src, phone=phone)
+            user_send_groups = self.data.get_send_groups(src, phone=phone)
+            user_admin_groups = self.data.get_admin_groups(src, phone=phone)
+            helps = Helper().get_help(user_groups, user_send_groups, user_admin_groups)
+            for msg in helps:
+                self.sender.send(src, msg)
 
         for i in ids:
             self.data.set_processed(i,status)
@@ -552,25 +577,35 @@ class Sender:
                 self.smsd.InjectSMS([message])
 
 class Helper:
-    def get_welcomes(self, number, group_name, group_kw, is_sender, is_admin, send_groups):
-        msg = (u"Välkommen till smslistan %s.\n"
-               u"För att lämna listan skriv ett sms med texten \"%s%s stopp\".")%(group_name,
-                       config.admin_prefix, group_kw)
-        if is_sender:
-            if len(send_groups) == 1:
-                msg += u"\nSkicka ett sms till detta nummret så går det ut till listan."
-            else:
-                msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, group_kw)
-        if is_admin:
-            if len(send_groups) == 1:
-                msg += u"\nFör att lägga till någon till listan, skicka \"%sadd [nummer]\""%(config.admin_prefix)
-            else:
-                msg += u"\nFör att lägga till någon till listan, skicka \"%s%s add [nummer]\""%(config.admin_prefix,group_kw)
-        if len(send_groups) == 2:
-            msg2 = (u"Du är nu med i 2 grupper. "
-                    u"Det betyder att du måste börja varje sms till %s med %s%s och varje sms till %s med %s%s"%
-                    (send_groups[0]['name'],config.send_prefix,send_groups[0]['keyword'],
-                     send_groups[1]['name'],config.send_prefix,send_groups[1]['keyword']))
-            return [msg,msg2]
+    def get_welcomes(self, group_name, group_kw, is_sender, is_admin, groups, send_groups):
+        msg = u"Välkommen till smslistan %s.\n"%group_name
+        if len(groups) == 1:
+           msg += u"För att lämna listan skriv ett sms med texten \"stop\"."
         else:
-            return [msg]
+           msg += u"För att lämna listan skriv ett sms med texten \"%s%s stop\"."%(
+                   group_name, config.admin_prefix, group_kw)
+        if is_sender:
+            msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, group_kw)
+        if is_admin:
+            msg += u"\nFör att lägga till någon till listan, skicka \"%s%s add [nummer]\""%(config.admin_prefix,group_kw)
+        return [msg]
+
+    def get_help(self, groups, send_groups, admin_groups):
+        msgs = []
+        send_names = [x['name'] for x in send_groups]
+        admin_names = [x['name'] for x in admin_groups]
+        for g in groups:
+            msg = u"Det här är den automatiska smslistan %s.\n"%g['name']
+            if len(groups) == 1:
+               msg += u"För att lämna listan skriv ett sms med texten \"stop\"."
+            else:
+               msg += u"För att lämna listan skriv ett sms med texten \"%s%s stop\"."%(
+                       g['name'],
+                   config.admin_prefix, g['keyword'])
+            if g['name'] in send_names:
+                msg += u"\nFör att skicka ett sms, börja smset med %s%s."%(config.send_prefix, g['keyword'])
+            if g['name'] in admin_names:
+                msg += u"\nFör att lägga till någon till listan, skicka \"%s%s add [nummer]\""%(config.admin_prefix,g['keyword'])
+
+            msgs.append(msg)
+        return msgs
