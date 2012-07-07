@@ -16,7 +16,7 @@ If you want the webapp you also need:
 
 Setting up the db:
 
-    $ sqlite3 smskrupp.db < sql/*.sql
+    $ cat sql/*.sql | sqlite3 smskrupp.db
 
 Create the config file:
     
