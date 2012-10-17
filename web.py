@@ -48,17 +48,18 @@ def groups(name=None):
                 group_id = data.get_group_id(name)
                 if group_id:
                     mid = data.add_number(number, request.form['alias'], group_id)
-                    if 'sender' in request.form:
-                        data.set_sender(config.default_phone, member_id=mid)
                     if 'admin' in request.form:
-                        data.set_admin(config.default_phone, member_id=mid)
+                        data.set_member_info(mid, sender=True, admin=True)
+                    elif 'sender' in request.form:
+                        data.set_member_info(mid, sender=True)
                 else:
                     error = "group error!"
             else:
                 error = "number error!"
         else:
             # add group
-            gid = data.add_group(request.form['name'])
+            gid = data.add_group(request.form['name'], request.form['keyword'],
+                    config.default_phone)
             data.set_webuser_group(session.get('userid'), gid)
             return redirect(url_for('groups')+request.form['name'])
 
@@ -66,7 +67,7 @@ def groups(name=None):
     if not session.get('admin'):
         groups = data.get_webuser_groups(session.get('userid'))
     else:
-        groups = [{'id':g[0],'name':g[1]} for g in data.get_groups()]
+        groups = data.get_groups()
 
     if name:
         gid = data.get_group_id(name)
@@ -86,7 +87,7 @@ def remove_member(mid=None):
     if not info:
         abort(404)
 
-    gids = [g.id for g in data.get_webuser_groups(session.get('userid'))]
+    gids = [g['id'] for g in data.get_webuser_groups(session.get('userid'))]
     if not session.get('admin') and info['groupId'] not in gids:
         abort(401)
 
@@ -123,7 +124,7 @@ def settings():
         elif 'pw' in request.form:
             data.set_webuser_pw(request.form['userid'], request.form['pw'])
 
-    groups = [dict(i=row[0],name=row[1]) for row in data.get_groups()]
+    groups = data.get_groups()
     return render_template('settings.html', webusers=data.get_webusers(),groups=groups)
 
 @app.route('/removewebusergroup/<uid>/<gid>') 
@@ -172,7 +173,6 @@ def logout():
     session.pop('admin', None)
     flash('You were logged out')
     return redirect(url_for('login'))
-
 
 if __name__ == '__main__':
     app.run()

@@ -12,6 +12,7 @@ def usage():
     print("%s set-sender <number> <group>"%sys.argv[0])
     print("%s set-admin <number> <group>"%sys.argv[0])
     print("%s fake-incoming <src> <phone> <msg>"%sys.argv[0])
+    print("%s add-webadmin <login> <password>"%sys.argv[0])
     sys.exit(1)
 
 if len(sys.argv) < 2:
@@ -95,6 +96,11 @@ elif sys.argv[1] == 'fake-incoming':
         print "number error!"
         sys.exit(1)
     data.fake_incoming(src,phone,msg)
+elif sys.argv[1] == 'add-webadmin':
+    if len(sys.argv) != 4:
+        usage()
+    login, password = sys.argv[2:]
+    data.add_webuser(login, password, 2)
 else:
     usage()
 

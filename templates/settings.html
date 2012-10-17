@@ -31,7 +31,7 @@
             <input type=hidden value="{{ user.user_id }}" name=userid>
             <select name=group>
                   {% for group in groups %}
-                  <option value={{ group.i }}>{{ group.name }}</option>
+                  <option value={{ group.id }}>{{ group.name }}</option>
                   {% endfor %}
       </select><input type=submit value=add></form></td>
       <td><a href="{{ url_for('remove_webuser',uid=user.user_id) }}">delete user</a></td>

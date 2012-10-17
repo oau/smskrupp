@@ -114,45 +114,6 @@ class Data:
                   'where groupId=? and admin=1', (group_id,))
         return [{'id':row[0],'number':row[1],'alias':row[2]} for row in c]
 
-    """
-    def get_admin(self, src, dest, msg):
-        ''' return pair (cmd, groupId)
-        '''
-        if not msg.startswith(config.admin_prefix):
-            # not an admin command
-            return None
-        msg = msg[len(config.admin_prefix):]
-
-        c = self.cursor
-        c.execute('select a.keyword,m.groupId from qq_groupMembers m '+
-                  'join qq_adminmap a on m.id = a.memberId '+
-                  'where m.number=? and a.dest=? order by length(keyword) desc',
-                  (src,dest))
-        for row in c:
-            keyword = row[0]
-            if len(keyword) > 0: keyword += ' '
-            if msg.lower().startswith(keyword.lower()):
-                msg_out = msg[len(keyword):]
-                return keyword,msg_out,row[1]
-        return None
-
-    def get_sendout(self, src, dest, msg):
-        ''' return pair (msg, groupId)
-        '''
-        c = self.cursor
-        c.execute('select a.keyword,m.groupId from qq_groupMembers m '+
-                  'join qq_sendmap a on m.id = a.memberId '+
-                  'where m.number=? and a.dest=? order by length(keyword) desc',
-                  (src,dest))
-        for row in c:
-            keyword = row[0]
-            if len(keyword) > 0: keyword += ' '
-            if msg.lower().startswith(keyword.lower()):
-                msg_out = msg[len(keyword):]
-                return msg_out,row[1]
-        return None
-        """
-
     def get_group_members(self, group_id):
         ''' return array of dicts describing members (id, number, alias, sender, admin)
         '''
@@ -356,10 +317,10 @@ class Data:
 
     def get_webuser_groups(self, webuser_id):
         c = self.cursor
-        c.execute('select groupId,name from qq_webUserGroups wg '
+        c.execute('select groupId,name,keyword from qq_webUserGroups wg '
             +'left join qq_groups g on g.id=wg.groupId where userId=?',
                 (webuser_id,))
-        return [{'id':row[0],'name':row[1]} for row in c]
+        return [{'id':row[0],'name':row[1], 'keyword':row[2]} for row in c]
 
     def set_webuser_group(self, webuser_id, group_id):
         c = self.cursor
@@ -396,7 +357,7 @@ class Data:
         if row:
             hashed = row[1]
             if bcrypt.hashpw(password, hashed) == hashed:
-                return row[2],row[3]
+                return row[3],row[2]
         return 0,0
 
 class Doer:

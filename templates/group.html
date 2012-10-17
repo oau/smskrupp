@@ -3,7 +3,7 @@
   <div>
   {% if session.userid %}
       {% for group in groups %}
-        <a href="{{ url_for('groups') }}{{group.name}}">{{ group.name }}</a>
+      <a href="{{ url_for('groups') }}{{group.name}}">{{ group.name }}({{ group.keyword }})</a>
       {% else %}
         <em>no groups</em>
       {% endfor %}
@@ -32,7 +32,7 @@
             </tr>
           {% endfor %}
           </table>
-          <br>
+          <br><hr>
           <b>add member</b>
           <form action="{{ url_for('groups') }}{{ name }}" method=post class=add-member>
               alias: <input type=text size=30 name=alias><br>
@@ -45,6 +45,7 @@
           <b>add group</b>
           <form action="{{ url_for('groups') }}" method=post class=add-group>
               name: <input type=text size=30 name=name><br>
+              keyword: <input type=text size=30 name=keyword><br>
               <input type=submit value=add>
           </form>
       {% endif %}
