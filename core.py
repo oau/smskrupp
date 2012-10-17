@@ -124,20 +124,20 @@ class Data:
         return [{'id':row[0], 'number':row[1], 'alias':row[2], 'sender':(row[3]==1),
             'admin':(row[4]==1)} for row in c]
 
-    def get_groups(self, phone=None, sender=None):
-        ''' returns array of dicts describing groups (id, name keyword, phone)
+    def get_groups(self, phone=None, number=None):
+        ''' returns array of dicts describing groups (id, name keyword, phone) containing number
         '''
         c = self.cursor
-        if phone and sender:
+        if phone and number:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
                     +'join qq_groups g on g.id = m.groupId '
                     +'where m.number=? and g.phone=? order by g.name asc',
-                    (sender,phone))
-        elif sender:
+                    (number,phone))
+        elif number:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
                     +'join qq_groups g on g.id = m.groupId '
                     +'where m.number=? order by g.name asc',
-                    (sender,))
+                    (number,))
         elif phone:
             c.execute('select id,name, keyword, phone from qq_groups where phone=? order by name asc',
                     (phone,))

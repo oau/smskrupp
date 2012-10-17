@@ -9,6 +9,7 @@ def usage():
     print("%s list-groups"%sys.argv[0])
     print("%s list-members <group>"%sys.argv[0])
     print("%s add-member <number> <alias> <group>"%sys.argv[0])
+    print("%s rm-member <number> <group|ALL>"%sys.argv[0])
     print("%s set-sender <number> <group>"%sys.argv[0])
     print("%s set-admin <number> <group>"%sys.argv[0])
     print("%s fake-incoming <src> <phone> <msg>"%sys.argv[0])
@@ -57,6 +58,24 @@ elif sys.argv[1] == 'add-member':
     mid = data.add_number(number, alias, group_id)
     if mid == None:
         print "error: alias already exists"
+elif sys.argv[1] == 'rm-member':
+    if len(sys.argv) != 4:
+        usage()
+    number,group = sys.argv[2:]
+    number = core.normalize_number(number)
+    if not number:
+        print "number error!"
+        sys.exit(1)
+    if group == "ALL":
+        for g in data.get_groups(number=number):
+            data.remove_number(number=number, group_id=g['id'])
+    else:
+        # one number
+        group_id = data.get_group_id(group)
+        if not group_id:
+            print "group error!"
+            sys.exit(1)
+        mid = data.remove_number(number=number, group_id=group_id)
 elif sys.argv[1] == 'set-sender':
     if len(sys.argv) != 4:
         usage()
