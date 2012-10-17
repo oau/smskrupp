@@ -409,15 +409,17 @@ class Doer:
 
             number = None
             action = None
-            if admin_cmd.startswith('add sender '):
-                action = 'add_sender'
-                number = normalize_number(admin_cmd[len('add sender '):])
-            elif admin_cmd.startswith('add admin '):
-                action = 'add_admin'
-                number = normalize_number(admin_cmd[len('add admin '):])
-            elif admin_cmd.startswith('add '):
-                action = 'add'
-                number = normalize_number(admin_cmd[len('add '):])
+            if admin_cmd.startswith('add '):
+                rest = admin_cmd[len('add '):].strip()
+                if rest.startswith('sender '):
+                    action = 'add_sender'
+                    number = normalize_number(rest[len('sender '):].strip())
+                elif rest.startswith('admin '):
+                    action = 'add_admin'
+                    number = normalize_number(rest[len('admin '):].strip())
+                else:
+                    action = 'add'
+                    number = normalize_number(rest)
             if action and number:
                 return {'action':action, 'number':number, 'group':group}
             else:
