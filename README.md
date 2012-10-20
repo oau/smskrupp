@@ -1,6 +1,6 @@
 # smskrupp
 
-smskrupp implements SMS lists on top of [gammu](https://github.com/gammu/gammu). Gammu does all the lower-level talking to the modem.
+smskrupp **implements SMS lists** on top of [gammu](https://github.com/gammu/gammu). Gammu does all the lower-level talking to the modem.
 
 It has a command-line interface and a Web interface for list management.
 
