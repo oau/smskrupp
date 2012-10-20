@@ -1,6 +1,20 @@
 # smskrupp
 
-A project using [gammu](https://github.com/gammu/gammu) to handle sms lists.
+smskrupp implements SMS lists on top of [gammu](https://github.com/gammu/gammu). Gammu does all the lower-level talking to the modem.
+
+It has a command-line interface and a Web interface for list management.
+
+## Usage
+
+Use the `smskrupp` command to manage groups:
+
+    $ ./smskrupp add-group test t
+    $ ./smskrupp add-member 0731234567 member1 test
+    $ ./smskrupp add-member 0731234568 member2 test
+    $ ./smskrupp set-sender 0731234567 test
+    $ ./smskrupp list-members test
+
+Now if you have gammu-smsd set up correctly you should be able to send a message from 0731234567 to the phone you've setup with gammu and it will deliver to all members in the group.
 
 ## Setup
 
@@ -25,18 +39,6 @@ Create the config file:
 Edit the config file so it points to the correct locations.
 
 For gammu to work you also need a gammu-smsdrc, there is an example file in the doc/ directory.
-
-## Usage
-
-Use the smskrupp command to manage groups:
-
-    $ ./smskrupp add-group test t
-    $ ./smskrupp add-member 0731234567 member1 test
-    $ ./smskrupp add-member 0731234568 member2 test
-    $ ./smskrupp set-sender 0731234567 test
-    $ ./smskrupp list-members test
-
-Now if you have gammu-smsd set up correctly you should be able to send a message from 0731234567 to the phone you've setup with gammu and it will deliver to all members in the group.
 
 ## Tests
 
