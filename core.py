@@ -132,11 +132,11 @@ class Data:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
                     +'join qq_groups g on g.id = m.groupId '
                     +'where m.number=? and g.phone=? order by g.name asc',
-                    (number,phone))
+                    (number, phone))
         elif number:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? order by g.name asc',
+                    + 'join qq_groups g on g.id = m.groupId '
+                    + 'where m.number=? order by g.name asc',
                     (number,))
         elif phone:
             c.execute('select id,name, keyword, phone from qq_groups where phone=? order by name asc',
@@ -151,13 +151,13 @@ class Data:
         c = self.cursor
         if phone:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? and g.phone=? and m.sender=1 order by g.name asc',
-                    (sender,phone))
+                    + 'join qq_groups g on g.id = m.groupId '
+                    + 'where m.number=? and g.phone=? and m.sender=1 order by g.name asc',
+                    (sender, phone))
         else:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? and m.sender=1 order by g.name asc',
+                    + 'join qq_groups g on g.id = m.groupId '
+                    + 'where m.number=? and m.sender=1 order by g.name asc',
                     (sender,))
         return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
 
@@ -167,17 +167,17 @@ class Data:
         c = self.cursor
         if phone:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? and g.phone=? and m.admin=1 order by g.name asc',
-                    (sender,phone))
+                    + 'join qq_groups g on g.id = m.groupId '
+                    + 'where m.number=? and g.phone=? and m.admin=1 order by g.name asc',
+                    (sender, phone))
         else:
             c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? and m.admin=1 order by g.name asc',
+                    + 'join qq_groups g on g.id = m.groupId '
+                    + 'where m.number=? and m.admin=1 order by g.name asc',
                     (sender,))
         return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
 
-    def get_group_id(self,name):
+    def get_group_id(self, name):
         c = self.cursor
         c.execute('select id,name from qq_groups where name=?', (name,))
         x = c.fetchone()
@@ -208,11 +208,11 @@ class Data:
     def get_member_info(self, member_id):
         c = self.cursor
         c.execute('select m.id,m.number,m.alias,m.groupId,g.name from qq_groupMembers m '
-                +'left join qq_groups g on g.id = m.groupId where m.id=?',
+                + 'left join qq_groups g on g.id = m.groupId where m.id=?',
                 (member_id,))
         x = c.fetchone()
         if x:
-            return {'id': x[0], 'number': x[1], 'alias': x[2], 'groupId':x[3], 'groupName':x[4]}
+            return {'id': x[0], 'number': x[1], 'alias': x[2], 'groupId': x[3], 'groupName': x[4]}
         return None
 
     def _calculate_udh_part(self, udh):
@@ -222,51 +222,51 @@ class Data:
         i = 1
         while i <= length:
             # parse one IEI
-            iei_id = int(udh[i*2:i*2+2], 16)
+            iei_id = int(udh[i * 2: i * 2 + 2], 16)
             i += 1
-            iei_len = int(udh[i*2:i*2+2], 16)
+            iei_len = int(udh[i * 2: i * 2 + 2], 16)
             if not iei_id == 0:
                 # not concatenation iei
                 i += iei_len
                 continue
             i += 1
-            ref = int(udh[i*2:i*2+2], 16)
+            ref = int(udh[i * 2: i * 2 + 2], 16)
             i += 1
-            num_parts = int(udh[i*2:i*2+2], 16)
+            num_parts = int(udh[i * 2: i * 2 + 2], 16)
             i += 1
-            part = int(udh[i*2:i*2+2], 16)
-            return part,num_parts,ref
+            part = int(udh[i * 2: i * 2 + 2], 16)
+            return part, num_parts, ref
 
     def get_unprocessed(self):
         c = self.cursor
-        c.execute("select ID,SenderNumber,RecipientID,TextDecoded,UDH "+
+        c.execute("select ID,SenderNumber,RecipientID,TextDecoded,UDH " +
                   "from inbox where Processed='false'")
         parts = {}
         ret = []
         for row in c:
-            i,src,phone,text,udh = row
+            i, src, phone, text, udh = row
             x = self._calculate_udh_part(udh)
             if x:
-                part,num_parts,ref = x
-                key = src+'-'+str(ref)
+                part, num_parts, ref = x
+                key = src + '-' + str(ref)
                 if not key in parts:
-                    parts[key] = src,phone,[],[]
-                parts[key][2].append((part,text))
+                    parts[key] = src, phone, [], []
+                parts[key][2].append((part, text))
                 parts[key][3].append(i)
 
                 if len(parts[key][2]) == num_parts:
                     # found all parts
-                    tot_text = "".join(map(lambda x: x[1], sorted(parts[key][2], key = lambda x: x[0])))
-                    ret.append({'ids':parts[key][3], 'src':src, 'phone':phone, 'text':tot_text})
+                    tot_text = "".join(map(lambda x: x[1], sorted(parts[key][2], key=lambda x: x[0])))
+                    ret.append({'ids': parts[key][3], 'src': src, 'phone': phone, 'text': tot_text})
                     del parts[key]
             else:
                 # single part
-                ret.append({'ids':[i], 'src':src, 'phone':phone, 'text':text})
+                ret.append({'ids': [i], 'src': src, 'phone': phone, 'text': text})
         return ret
 
     def set_processed(self, msgId, status='true'):
         c = self.cursor
-        c.execute("update inbox set Processed=? where ID=?", (status,msgId))
+        c.execute("update inbox set Processed=? where ID=?", (status, msgId))
         self.conn.commit()
 
     def fake_incoming(self, src, phoneId, msg):
@@ -288,40 +288,40 @@ class Data:
         if self.conn:
             self.conn.close()
             self.conn = None
-    
+
     def add_webuser(self, username, pw, privilege):
         import bcrypt
         c = self.cursor
-        h = bcrypt.hashpw(pw,bcrypt.gensalt())
+        h = bcrypt.hashpw(pw, bcrypt.gensalt())
         c.execute('insert into qq_webUsers (username,hash,privilege) values (?,?,?)',
-                (username,h,privilege))
+                (username, h, privilege))
         self.conn.commit()
 
     def get_webusers(self):
         c = self.cursor
         c.execute('select u.id,u.username,u.privilege,g.id,g.name from qq_webUsers u '
-                +'left join qq_webUserGroups wg on wg.userId = u.id '
-                +'left join qq_groups g on g.id = wg.groupId '
-                +'order by u.id')
+                + 'left join qq_webUserGroups wg on wg.userId = u.id '
+                + 'left join qq_groups g on g.id = wg.groupId '
+                + 'order by u.id')
         ret = []
         seen = []
         for row in c:
             if row[0] in seen:
-                ret[-1]['groups'].append({'group_id':row[3],'group_name':row[4]})
+                ret[-1]['groups'].append({'group_id': row[3], 'group_name': row[4]})
             else:
                 seen.append(row[0])
-                ret.append({'user_id':row[0],'username':row[1],'privilege':row[2],'groups':[]})
+                ret.append({'user_id': row[0], 'username': row[1], 'privilege': row[2], 'groups': []})
                 if row[3]:
-                    ret[-1]['groups'].append({'group_id':row[3],'group_name':row[4]})
+                    ret[-1]['groups'].append({'group_id': row[3], 'group_name': row[4]})
 
         return ret
 
     def get_webuser_groups(self, webuser_id):
         c = self.cursor
         c.execute('select groupId,name,keyword from qq_webUserGroups wg '
-            +'left join qq_groups g on g.id=wg.groupId where userId=?',
+            + 'left join qq_groups g on g.id=wg.groupId where userId=?',
                 (webuser_id,))
-        return [{'id':row[0],'name':row[1], 'keyword':row[2]} for row in c]
+        return [{'id': row[0], 'name': row[1], 'keyword': row[2]} for row in c]
 
     def set_webuser_group(self, webuser_id, group_id):
         c = self.cursor
