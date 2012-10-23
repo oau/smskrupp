@@ -1,8 +1,9 @@
 class Config:
     db = 'smskrupp.db'
     smsdrc = '/etc/gammu-smsdrc'
-    test_db = 'tmp.db'
+    test_db = 'smskrupp-test.db'
     test_smsdrc = 'test-gammu-smsdrc'
+    send_prefix='#'
     admin_prefix='/'
     log = 'smskrupp.log'
     default_phone = 'phone1'
