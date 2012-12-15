@@ -2,8 +2,6 @@
 import sys
 
 import core
-from config import config
-
 
 def usage():
     print("%s add-group <name> <keyword>" % sys.argv[0])
@@ -25,7 +23,7 @@ data = core.Data()
 if sys.argv[1] == 'add-group':
     if len(sys.argv) != 4:
         usage()
-    data.add_group(sys.argv[2], sys.argv[3], config.default_phone)
+    data.add_group(sys.argv[2], sys.argv[3])
 elif sys.argv[1] == 'list-groups':
     for g in data.get_groups():
         print g['name']

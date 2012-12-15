@@ -11,27 +11,25 @@ class TestData:
         self.data.purge_all_data()
 
     def test_add_group(self):
-        gid = self.data.add_group("group1", "keyword", "phone1")
+        gid = self.data.add_group("group1", "keyword")
         assert isinstance(gid, int)
-        gs = self.data.get_groups(phone="phone1")
+        gs = self.data.get_groups()
         assert 1 == len(gs)
         assert 'group1' == gs[0]['name']
         assert 'keyword' == gs[0]['keyword']
-        assert 'phone1' == gs[0]['phone']
         assert gid == gs[0]['id']
 
     def test_get_groups(self):
         number1 = "345"
         number2 = "346"
-        phone = "phone1"
-        gid1 = self.data.add_group("group1", "keyword1", phone)
-        gid2 = self.data.add_group("group2", "keyword2", phone)
+        gid1 = self.data.add_group("group1", "keyword1")
+        gid2 = self.data.add_group("group2", "keyword2")
         self.data.add_number(number1, "alias", gid1)
         self.data.add_number(number2, "alias", gid2)
-        gs = self.data.get_groups(phone=phone)
+        gs = self.data.get_groups()
         assert 2 == len(gs)
 
-        gs = self.data.get_groups(phone=phone, number=number1)
+        gs = self.data.get_groups(number=number1)
         assert 1 == len(gs)
         assert 'group1' == gs[0]['name']
 
@@ -41,7 +39,7 @@ class TestData:
 
     def test_add_number(self):
         number = "123"
-        gid = self.data.add_group("group1", "keyword", "123")
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         members = self.data.get_group_members(gid)
         assert mid
@@ -53,7 +51,7 @@ class TestData:
     def test_add_number_no_alias(self):
         number1 = "123"
         number2 = "124"
-        gid = self.data.add_group("group1", "keyword", "123")
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number1, None, gid)
         mid2 = self.data.add_number(number2, None, gid)
         members = self.data.get_group_members(gid)
@@ -70,7 +68,7 @@ class TestData:
     def test_remove_number(self):
         number1 = "123"
         number2 = "1235"
-        gid = self.data.add_group("group1", "keyword", "123")
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number1, "alias", gid)
         self.data.remove_number(number=number1, group_id=gid)
         numbers = self.data.get_group_members(gid)
@@ -83,8 +81,7 @@ class TestData:
 
     def test_add_sender(self):
         number = "1234"
-        phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         senders = self.data.get_group_senders(gid)
@@ -95,8 +92,7 @@ class TestData:
 
     def test_add_admin(self):
         number = "1234"
-        phone = "phone1337"
-        gid = self.data.add_group("group1", "", phone)
+        gid = self.data.add_group("group1", "")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(member_id=mid, admin=True)
         admins = self.data.get_group_admins(gid)
@@ -128,7 +124,7 @@ class TestDoer:
     def test_run(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", "123")
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True)
         self.data.fake_incoming(number, phone, "hello")
@@ -137,7 +133,7 @@ class TestDoer:
     def test_run_stop_command(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number, "alias", gid)
         self.data.fake_incoming(number, phone, "stop")
         self.doer.run()
@@ -146,7 +142,7 @@ class TestDoer:
     def test_run_stop_command_prefix(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number, "alias", gid)
         self.data.fake_incoming(number, phone, "/keyword stop")
         self.doer.run()
@@ -155,7 +151,7 @@ class TestDoer:
     def test_run_admin_command_add_unauthorized(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number, "alias", gid)
         self.data.fake_incoming(number, phone, "/add 073123")
         self.doer.run()
@@ -168,7 +164,7 @@ class TestDoer:
     def test_run_admin_command_add(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/add 073123")
@@ -182,7 +178,7 @@ class TestDoer:
     def test_run_admin_command_add_sender(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/Add Sender 073123")
@@ -196,7 +192,7 @@ class TestDoer:
     def test_run_admin_command_add_admin(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/add admin 073123")
@@ -210,7 +206,7 @@ class TestDoer:
     def test_run_admin_command_add_keyword(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/keyword add 073123")
@@ -224,7 +220,7 @@ class TestDoer:
     def test_run_admin_command_add_sender_keyword(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/KEYWORD Add Sender 073123")
@@ -238,7 +234,7 @@ class TestDoer:
     def test_run_admin_command_add_admin_keyword(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True, admin=True)
         self.data.fake_incoming(number, phone, "/KEyWord add admin 073123")
@@ -252,7 +248,7 @@ class TestDoer:
     def test_run_sendout_unauthorized(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number, "alias", gid)
 
         s = FakeSender()
@@ -274,7 +270,7 @@ class TestDoer:
     def test_run_sendout_keyword_unauthorized(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         self.data.add_number(number, "alias", gid)
 
         s = FakeSender()
@@ -286,7 +282,7 @@ class TestDoer:
     def test_run_sendout(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True)
 
@@ -300,7 +296,7 @@ class TestDoer:
     def test_run_sendout_prefix(self):
         number = "+46736000001"
         phone = "phone1"
-        gid = self.data.add_group("group1", "keyword", phone)
+        gid = self.data.add_group("group1", "keyword")
         mid = self.data.add_number(number, "alias", gid)
         self.data.set_member_info(mid, sender=True)
 

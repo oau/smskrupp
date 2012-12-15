@@ -1,5 +1,7 @@
 class Config:
     db = 'smskrupp.db'
+    
+    # smsdrc used for sending sms
     smsdrc = '/etc/gammu-smsdrc'
     test_db = 'smskrupp-test.db'
     test_smsdrc = 'test-gammu-smsdrc'

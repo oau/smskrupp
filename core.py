@@ -76,13 +76,13 @@ class Data:
                       (member_id,))
             self.conn.commit()
 
-    def add_group(self, name, keyword, phone):
+    def add_group(self, name, keyword):
         ''' create a group and return id of the created group
         '''
         c = self.cursor
-        c.execute("insert into qq_groups (name,keyword,phone) " +
-                  "values (?,?,?)",
-                  (name, keyword, phone))
+        c.execute("insert into qq_groups (name,keyword) " +
+                  "values (?,?)",
+                  (name, keyword))
         self.conn.commit()
         c.execute('select id from qq_groups where name=?', (name,))
         group_id = None
@@ -124,58 +124,38 @@ class Data:
         return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] ==1 ),
             'admin':(row[4]==1)} for row in c]
 
-    def get_groups(self, phone=None, number=None):
-        ''' returns array of dicts describing groups (id, name keyword, phone) containing number
+    def get_groups(self, number=None):
+        ''' returns array of dicts describing groups (id, name keyword) containing number
         '''
         c = self.cursor
-        if phone and number:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    +'join qq_groups g on g.id = m.groupId '
-                    +'where m.number=? and g.phone=? order by g.name asc',
-                    (number, phone))
-        elif number:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
+        if number:
+            c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
                     + 'join qq_groups g on g.id = m.groupId '
                     + 'where m.number=? order by g.name asc',
                     (number,))
-        elif phone:
-            c.execute('select id,name, keyword, phone from qq_groups where phone=? order by name asc',
-                    (phone,))
         else:
-            c.execute('select id,name,keyword,phone from qq_groups order by name asc')
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
+            c.execute('select id,name,keyword from qq_groups order by name asc')
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
 
-    def get_send_groups(self, sender, phone=None):
-        ''' returns array of dicts describing groups (id, name keyword, phone) where the sender can send
+    def get_send_groups(self, sender):
+        ''' returns array of dicts describing groups (id, name keyword) where the sender can send
         '''
         c = self.cursor
-        if phone:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    + 'join qq_groups g on g.id = m.groupId '
-                    + 'where m.number=? and g.phone=? and m.sender=1 order by g.name asc',
-                    (sender, phone))
-        else:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    + 'join qq_groups g on g.id = m.groupId '
-                    + 'where m.number=? and m.sender=1 order by g.name asc',
-                    (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
+        c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
+                + 'join qq_groups g on g.id = m.groupId '
+                + 'where m.number=? and m.sender=1 order by g.name asc',
+                (sender,))
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
 
-    def get_admin_groups(self, sender, phone=None):
-        ''' returns array of dicts describing groups (id, name keyword, phone) where the sender can admin
+    def get_admin_groups(self, sender):
+        ''' returns array of dicts describing groups (id, name keyword) where the sender can admin
         '''
         c = self.cursor
-        if phone:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    + 'join qq_groups g on g.id = m.groupId '
-                    + 'where m.number=? and g.phone=? and m.admin=1 order by g.name asc',
-                    (sender, phone))
-        else:
-            c.execute('select g.id, g.name, g.keyword, g.phone from qq_groupMembers m '
-                    + 'join qq_groups g on g.id = m.groupId '
-                    + 'where m.number=? and m.admin=1 order by g.name asc',
-                    (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'phone':row[3]} for row in c]
+        c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
+                + 'join qq_groups g on g.id = m.groupId '
+                + 'where m.number=? and m.admin=1 order by g.name asc',
+                (sender,))
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
 
     def get_group_id(self, name):
         c = self.cursor
@@ -390,9 +370,9 @@ class Doer:
             t = strftime("%Y-%m-%d %H:%M:%S", localtime())
             log.write("[%s] [doer] %s\n" % (t, text.encode('utf-8')))
 
-    def _parse_action(self, src, phone, orig_msg):
-        groups = self.data.get_groups(phone=phone, number=src)
-        send_groups = self.data.get_send_groups(src, phone=phone)
+    def _parse_action(self, src, orig_msg):
+        groups = self.data.get_groups(number=src)
+        send_groups = self.data.get_send_groups(src)
         lmsg = orig_msg.lower().strip()
         if lmsg == 'stop' or lmsg == 'stopp':
             return {'action': 'stop', 'groups': groups}
@@ -458,7 +438,7 @@ class Doer:
 
     def _handle_message(self, ids, src, phone, orig_msg):
         self._log("got message '%s' from %s to %s" % (orig_msg, src, phone))
-        action = self._parse_action(src, phone, orig_msg)
+        action = self._parse_action(src, orig_msg)
 
         status = 'invalid'
         if action['action'] == 'stop':
@@ -496,16 +476,16 @@ class Doer:
                     self.data.set_member_info(mid, sender=True, admin=True)
                     is_sender, is_admin = True, True
 
-                user_groups = self.data.get_groups(number=action['number'], phone=phone)
-                user_send_groups = self.data.get_send_groups(action['number'], phone=phone)
+                user_groups = self.data.get_groups(number=action['number'])
+                user_send_groups = self.data.get_send_groups(action['number'])
                 welcomes = Helper().get_welcomes(group['name'], group['keyword'], is_sender, is_admin, user_groups, user_send_groups)
                 for msg in welcomes:
                     self.sender.send(action['number'], msg)
         elif action['action'] == 'invalid':
             # send help message
-            user_groups = self.data.get_groups(number=src, phone=phone)
-            user_send_groups = self.data.get_send_groups(src, phone=phone)
-            user_admin_groups = self.data.get_admin_groups(src, phone=phone)
+            user_groups = self.data.get_groups(number=src)
+            user_send_groups = self.data.get_send_groups(src)
+            user_admin_groups = self.data.get_admin_groups(src)
             helps = Helper().get_help(user_groups, user_send_groups, user_admin_groups)
             for msg in helps:
                 self.sender.send(src, msg)

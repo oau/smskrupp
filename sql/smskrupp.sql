@@ -14,9 +14,8 @@ CREATE TABLE qq_groups (
 id integer primary key autoincrement,
 name varchar(50) not null,
 keyword varchar(10) not null,
-phone varchar(22) not null,
-unique (name, phone),
-unique (keyword, phone));
+unique (name),
+unique (keyword));
 
 DROP TABLE IF EXISTS qq_webUsers;
 CREATE TABLE qq_webUsers (
