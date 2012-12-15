@@ -1,6 +1,7 @@
 import core
 from config import config
 
+
 class TestData:
     def setUp(self):
         config.db = config.test_db
@@ -30,7 +31,7 @@ class TestData:
         gs = self.data.get_groups(phone=phone)
         assert 2 == len(gs)
 
-        gs = self.data.get_groups(phone=phone,number=number1)
+        gs = self.data.get_groups(phone=phone, number=number1)
         assert 1 == len(gs)
         assert 'group1' == gs[0]['name']
 
@@ -113,11 +114,12 @@ class TestData:
         assert "phone1" == u[0]['phone']
         assert "hello" == u[0]['text']
 
+
 class TestDoer:
     def setUp(self):
         config.db = config.test_db
         config.smsdrc = config.test_smsdrc
-        self.sender = FakeSender() #core.Sender()
+        self.sender = FakeSender()  # core.Sender()
         self.doer = core.Doer(self.sender)
         self.data = core.Data()
         self.data.setup_db()
@@ -160,7 +162,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # help message
+        assert len(self.sender.sendouts) == 1  # help message
         assert self.sender.sendouts[0][0] == number
 
     def test_run_admin_command_add(self):
@@ -174,7 +176,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_admin_command_add_sender(self):
@@ -188,7 +190,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_admin_command_add_admin(self):
@@ -202,7 +204,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_admin_command_add_keyword(self):
@@ -216,7 +218,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_admin_command_add_sender_keyword(self):
@@ -230,7 +232,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_admin_command_add_admin_keyword(self):
@@ -244,7 +246,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_members(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_senders(gid)]
         assert "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
-        assert len(self.sender.sendouts) == 1 # welcome message
+        assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
 
     def test_run_sendout_unauthorized(self):
@@ -292,7 +294,7 @@ class TestDoer:
         doer = core.Doer(s)
         self.data.fake_incoming(number, phone, "test")
         doer.run()
-        assert 1 == len(s.sendouts) # test message
+        assert 1 == len(s.sendouts)  # test message
         assert s.sendouts[0][0] == number
 
     def test_run_sendout_prefix(self):
@@ -309,9 +311,10 @@ class TestDoer:
         assert 1 == len(s.sendouts)
         assert (number, "#keyword test") == s.sendouts[0]
 
+
 class FakeSender:
     def __init__(self):
         self.sendouts = []
 
     def send(self, dest, msg):
-        self.sendouts.append((dest,msg))
+        self.sendouts.append((dest, msg))
