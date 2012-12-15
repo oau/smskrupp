@@ -13,6 +13,7 @@ def usage():
     print("%s set-admin <number> <group>" % sys.argv[0])
     print("%s fake-incoming <src> <phone> <msg>" % sys.argv[0])
     print("%s add-webadmin <login> <password>" % sys.argv[0])
+    print("%s dump-groups" % sys.argv[0])
     sys.exit(1)
 
 if len(sys.argv) < 2:
@@ -122,5 +123,18 @@ elif sys.argv[1] == 'add-webadmin':
         usage()
     login, password = sys.argv[2:]
     data.add_webuser(login, password, 2)
+elif sys.argv[1] == 'dump-groups':
+    if len(sys.argv) != 2:
+        print len(sys.argv)
+        usage()
+    for g in data.get_groups():
+        print 'smskrupp add-group %s %s'%(g['name'], g['keyword'])
+        for member in data.get_group_members(g['id']):
+            print 'smskrupp add-member %s %s %s'%(member['number'], member['alias'], g['name'])
+            if member['sender']:
+                print 'smskrupp set-sender %s %s'%(member['number'], g['name'])
+            if member['admin']:
+                print 'smskrupp set-admin %s %s'%(member['number'], g['name'])
+
 else:
     usage()
