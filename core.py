@@ -360,6 +360,19 @@ class Data:
                 return row[3],row[2]
         return 0,0
 
+    def increment_sent_stats(self, group_id):
+        day = strftime("%Y-%m-%d %H:%M:%S", localtime())
+        c = self.cursor
+        c.execute("insert or ignore into qq_groupStatistics "+
+                  "(day, groupId, cnt) "+
+                  "values (?,?,0)",
+                  (day, group_id))
+        c.execute("update qq_groupStatistics "+
+                  "set cnt=cnt+1 "
+                  "where day=? and groupId=?",
+                  (day, group_id))
+        self.conn.commit()
+
 class Doer:
     def __init__(self, sender):
         self.data = Data()
@@ -374,7 +387,7 @@ class Doer:
             log.write("[%s] [doer] %s\n"%(t,text.encode('utf-8')));
 
     def _parse_action(self, src, phone, orig_msg):
-        groups = self.data.get_groups(phone=phone, sender=src)
+        groups = self.data.get_groups(phone=phone, number=src)
         send_groups = self.data.get_send_groups(src, phone=phone)
         lmsg = orig_msg.lower().strip()
         if lmsg == 'stop' or lmsg == 'stopp':
@@ -461,6 +474,7 @@ class Doer:
                 members = self.data.get_group_members(group['id'])
                 for member in members:
                     self.sender.send(member['number'],msg)
+                    self.data.increment_sent_stats(group['id'])
                 status = 'send'
         elif action['action'] in ['add','add_sender', 'add_admin']:
             group = action['group']
@@ -479,14 +493,14 @@ class Doer:
                     self.data.set_member_info(mid, sender=True, admin=True)
                     is_sender,is_admin = True,True
 
-                user_groups = self.data.get_groups(sender=action['number'], phone=phone)
+                user_groups = self.data.get_groups(number=action['number'], phone=phone)
                 user_send_groups = self.data.get_send_groups(action['number'], phone=phone)
                 welcomes = Helper().get_welcomes(group['name'], group['keyword'], is_sender, is_admin, user_groups, user_send_groups)
                 for msg in welcomes:
                     self.sender.send(action['number'], msg)
         elif action['action'] == 'invalid':
             # send help message
-            user_groups = self.data.get_groups(sender=src, phone=phone)
+            user_groups = self.data.get_groups(number=src, phone=phone)
             user_send_groups = self.data.get_send_groups(src, phone=phone)
             user_admin_groups = self.data.get_admin_groups(src, phone=phone)
             helps = Helper().get_help(user_groups, user_send_groups, user_admin_groups)

@@ -30,11 +30,11 @@ class TestData:
         gs = self.data.get_groups(phone=phone)
         assert 2 == len(gs)
 
-        gs = self.data.get_groups(phone=phone,sender=number1)
+        gs = self.data.get_groups(phone=phone,number=number1)
         assert 1 == len(gs)
         assert 'group1' == gs[0]['name']
 
-        gs = self.data.get_groups(sender=number2)
+        gs = self.data.get_groups(number=number2)
         assert 1 == len(gs)
         assert 'group2' == gs[0]['name']
 

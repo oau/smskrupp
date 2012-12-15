@@ -31,3 +31,11 @@ CREATE TABLE qq_webUserGroups (
 userId integer not null,
 groupId integer not null,
 unique (userId,groupId));
+
+DROP TABLE IF EXISTS qq_groupStatistics;
+CREATE TABLE qq_groupStatistics (
+id integer primary key autoincrement,
+groupId integer not null,
+day datetime not null,
+cnt integer not null,
+unique (groupId,day));
