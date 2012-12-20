@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import division
+from __future__ import print_function
 
 from config import config
 import sqlite3
@@ -158,12 +160,23 @@ class Data:
         return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
 
     def get_group_id(self, name):
+        info = self.get_group_info(name=name)
+        if not info:
+            return None
+        return info['id']
+
+    def get_group_info(self, group_id=None, name=None):
         c = self.cursor
-        c.execute('select id,name from qq_groups where name=?', (name,))
+        if group_id:
+            c.execute('select id,name,keyword from qq_groups where id=?', (group_id,))
+        elif name:
+            c.execute('select id,name,keyword from qq_groups where name=?', (name,))
+        else:
+            return None
         x = c.fetchone()
         if not x:
             return None
-        return x[0]
+        return {'id':x[0], 'name':x[1], 'keyword':x[2]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -436,6 +449,14 @@ class Doer:
 
         return {'action': 'invalid'}
 
+    def sendout(self, group_id, msg):
+        group = self.data.get_group_info(group_id=group_id)
+        self._log("doing sendout to group %s" % group['name'])
+        members = self.data.get_group_members(group['id'])
+        for member in members:
+            self.sender.send(member['number'], msg)
+            self.data.increment_sent_stats(group['id'])
+
     def _handle_message(self, ids, src, phone, orig_msg):
         self._log("got message '%s' from %s to %s" % (orig_msg, src, phone))
         action = self._parse_action(src, orig_msg)
@@ -453,11 +474,7 @@ class Doer:
                         (orig_msg, src, phone))
                 status = 'unauthorized'
             else:
-                self._log("doing sendout to group %s" % group['name'])
-                members = self.data.get_group_members(group['id'])
-                for member in members:
-                    self.sender.send(member['number'], msg)
-                    self.data.increment_sent_stats(group['id'])
+                self.sendout(group['id'], msg)
                 status = 'send'
         elif action['action'] in ['add', 'add_sender', 'add_admin']:
             group = action['group']

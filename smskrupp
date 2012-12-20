@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import division
+from __future__ import print_function
 import sys
 
 import core
@@ -14,127 +16,142 @@ def usage():
     print("%s fake-incoming <src> <phone> <msg>" % sys.argv[0])
     print("%s add-webadmin <login> <password>" % sys.argv[0])
     print("%s dump-groups" % sys.argv[0])
+    print("%s group-sendout <group> <msg>" % sys.argv[0])
     sys.exit(1)
 
-if len(sys.argv) < 2:
+
+argv = []
+for a in sys.argv:
+    argv.append(a.decode(sys.getfilesystemencoding()))
+
+if len(argv) < 2:
     usage()
 
 data = core.Data()
 
-if sys.argv[1] == 'add-group':
-    if len(sys.argv) != 4:
+if argv[1] == u'add-group':
+    if len(argv) != 4:
         usage()
-    data.add_group(sys.argv[2], sys.argv[3])
-elif sys.argv[1] == 'list-groups':
+    data.add_group(argv[2], argv[3])
+elif argv[1] == u'list-groups':
     for g in data.get_groups():
-        print g['name']
-elif sys.argv[1] == 'list-members':
-    if len(sys.argv) != 3:
+        print(g['name'])
+elif argv[1] == u'list-members':
+    if len(argv) != 3:
         usage()
-    gid = data.get_group_id(sys.argv[2])
+    gid = data.get_group_id(argv[2])
     if not gid:
-        print "no such group!"
+        print(u"no such group!")
         sys.exit(1)
     for member in data.get_group_members(gid):
         if member['sender']:
-            s = 's'
+            s = u's'
         else:
-            s = ' '
+            s = u' '
         if member['admin']:
-            s = 'a' + s
+            s = u'a' + s
         else:
-            s = ' ' + s
-        s += ' %s [%s]' % (member['alias'], member['number'])
+            s = u' ' + s
+        s += u' %s [%s]' % (member['alias'], member['number'])
         print(s)
-elif sys.argv[1] == 'add-member':
-    if len(sys.argv) != 5:
+elif argv[1] == u'add-member':
+    if len(argv) != 5:
         usage()
-    number, alias, group = sys.argv[2:]
+    number, alias, group = argv[2:]
     number = core.normalize_number(number)
     if not number:
-        print "number error!"
+        print(u"number error!")
         sys.exit(1)
     group_id = data.get_group_id(group)
     if not group_id:
-        print "group error!"
+        print(u"group error!")
         sys.exit(1)
     mid = data.add_number(number, alias, group_id)
     if mid == None:
-        print "error: alias already exists"
-elif sys.argv[1] == 'rm-member':
-    if len(sys.argv) != 4:
+        print(u"error: alias already exists")
+elif argv[1] == u'rm-member':
+    if len(argv) != 4:
         usage()
-    number, group = sys.argv[2:]
+    number, group = argv[2:]
     number = core.normalize_number(number)
     if not number:
-        print "number error!"
+        print(u"number error!")
         sys.exit(1)
-    if group == "ALL":
+    if group == u"ALL":
         for g in data.get_groups(number=number):
             data.remove_number(number=number, group_id=g['id'])
     else:
         # one number
         group_id = data.get_group_id(group)
         if not group_id:
-            print "group error!"
+            print(u"group error!")
             sys.exit(1)
         mid = data.remove_number(number=number, group_id=group_id)
-elif sys.argv[1] == 'set-sender':
-    if len(sys.argv) != 4:
+elif argv[1] == u'set-sender':
+    if len(argv) != 4:
         usage()
 
-    number, group = sys.argv[2:]
+    number, group = argv[2:]
     number = core.normalize_number(number)
     group_id = data.get_group_id(group)
     if not group_id:
-        print "group error!"
+        print(u"group error!")
         sys.exit(1)
     mid = data.get_member_id(number, group_id)
     if not mid:
-        print "no such number!"
+        print(u"no such number!")
         sys.exit(1)
     data.set_member_info(mid, sender=True)
-elif sys.argv[1] == 'set-admin':
-    if len(sys.argv) != 4:
+elif argv[1] == u'set-admin':
+    if len(argv) != 4:
         usage()
 
-    number, group = sys.argv[2:]
+    number, group = argv[2:]
     number = core.normalize_number(number)
     group_id = data.get_group_id(group)
     if not group_id:
-        print "group error!"
+        print(u"group error!")
         sys.exit(1)
     mid = data.get_member_id(number, group_id)
     if not mid:
-        print "no such number!"
+        print(u"no such number!")
         sys.exit(1)
     data.set_member_info(mid, sender=True, admin=True)
-elif sys.argv[1] == 'fake-incoming':
-    if len(sys.argv) != 5:
+elif argv[1] == u'fake-incoming':
+    if len(argv) != 5:
         usage()
-    src, phone, msg = sys.argv[2:]
+    src, phone, msg = argv[2:]
     src = core.normalize_number(src)
     if not src:
-        print "number error!"
+        print("number error!")
         sys.exit(1)
     data.fake_incoming(src, phone, msg)
-elif sys.argv[1] == 'add-webadmin':
-    if len(sys.argv) != 4:
+elif argv[1] == u'add-webadmin':
+    if len(argv) != 4:
         usage()
-    login, password = sys.argv[2:]
+    login, password = argv[2:]
     data.add_webuser(login, password, 2)
-elif sys.argv[1] == 'dump-groups':
-    if len(sys.argv) != 2:
-        print len(sys.argv)
+elif argv[1] == u'dump-groups':
+    if len(argv) != 2:
+        print(len(argv))
         usage()
     for g in data.get_groups():
-        print 'smskrupp add-group %s %s'%(g['name'], g['keyword'])
+        print(u'smskrupp add-group %s %s'%(g['name'], g['keyword']))
         for member in data.get_group_members(g['id']):
-            print 'smskrupp add-member %s %s %s'%(member['number'], member['alias'], g['name'])
+            print(u'smskrupp add-member %s %s %s'%(member['number'], member['alias'], g['name']))
             if member['sender']:
-                print 'smskrupp set-sender %s %s'%(member['number'], g['name'])
+                print(u'smskrupp set-sender %s %s'%(member['number'], g['name']))
             if member['admin']:
-                print 'smskrupp set-admin %s %s'%(member['number'], g['name'])
-
+                print(u'smskrupp set-admin %s %s'%(member['number'], g['name']))
+elif argv[1] == u'group-sendout':
+    if len(argv) != 4:
+        usage()
+    group, msg = argv[2:]
+    group_id = data.get_group_id(group)
+    if not group_id:
+        print(u"no such group!")
+    sender = core.Sender()
+    d = core.Doer(sender)
+    d.sendout(group_id, msg)
 else:
     usage()
