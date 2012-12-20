@@ -16,7 +16,6 @@ def usage():
     print("%s fake-incoming <src> <phone> <msg>" % sys.argv[0])
     print("%s add-webadmin <login> <password>" % sys.argv[0])
     print("%s dump-groups" % sys.argv[0])
-    print("%s group-sendout <group> <msg>" % sys.argv[0])
     sys.exit(1)
 
 
@@ -143,15 +142,5 @@ elif argv[1] == u'dump-groups':
                 print(u'smskrupp set-sender %s %s'%(member['number'], g['name']))
             if member['admin']:
                 print(u'smskrupp set-admin %s %s'%(member['number'], g['name']))
-elif argv[1] == u'group-sendout':
-    if len(argv) != 4:
-        usage()
-    group, msg = argv[2:]
-    group_id = data.get_group_id(group)
-    if not group_id:
-        print(u"no such group!")
-    sender = core.Sender()
-    d = core.Doer(sender)
-    d.sendout(group_id, msg)
 else:
     usage()
