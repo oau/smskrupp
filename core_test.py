@@ -6,6 +6,7 @@ class TestData:
     def setUp(self):
         config.db = config.test_db
         config.smsdrc = config.test_smsdrc
+        config.quiet_hours = []  # Time-travel library needed to test the quiet hours functionality
         self.data = core.Data()
         self.data.setup_db()
         self.data.purge_all_data()

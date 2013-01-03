@@ -5,6 +5,7 @@ from __future__ import print_function
 from config import config
 import sqlite3
 from time import strftime, localtime
+import datetime
 
 
 def normalize_number(number):
@@ -477,15 +478,18 @@ class Doer:
                 self.data.remove_number(number=src, group_id=g['id'])
             status = 'stop'
         elif action['action'] == 'sendout':
-            group = action['group']
-            msg = action['msg']
-            if not src in [m['number'] for m in self.data.get_group_senders(group['id'])]:
-                self._log("Warning: Unauthorized sendout command '%s' from %s to %s" %
-                        (orig_msg, src, phone))
-                status = 'unauthorized'
+            if self.is_quiet_period():
+                ids = []
             else:
-                self.sendout(group['id'], msg)
-                status = 'send'
+                group = action['group']
+                msg = action['msg']
+                if not src in [m['number'] for m in self.data.get_group_senders(group['id'])]:
+                    self._log("Warning: Unauthorized sendout command '%s' from %s to %s" %
+                            (orig_msg, src, phone))
+                    status = 'unauthorized'
+                else:
+                    self.sendout(group['id'], msg)
+                    status = 'send'
         elif action['action'] in ['add', 'add_sender', 'add_admin']:
             group = action['group']
             if not src in [m['number'] for m in self.data.get_group_admins(group['id'])]:
@@ -526,6 +530,9 @@ class Doer:
         for m in messages:
             self._handle_message(m['ids'], m['src'], m['phone'], m['text'])
         self.cleanup()
+
+    def is_quiet_period(self):
+        return datetime.datetime.now().time().hour in config.quiet_hours
 
 
 class Sender:
