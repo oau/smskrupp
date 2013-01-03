@@ -56,6 +56,16 @@ class Data:
         self.conn.commit()
         return self.get_member_id(number, group_id)
 
+    def change_number(self, number, new_number, group_id=None):
+        ''' Updates number if number already exists in group
+            does nothing if number does not exist.
+        '''
+        c = self.cursor
+        c.execute("UPDATE `qq_groupMembers` SET `number`=? WHERE `number`=? AND `groupId`=?",
+                  (new_number, number, group_id))
+        self.conn.commit()
+        return self.get_member_id(new_number, group_id)
+
     def set_member_info(self, member_id, **kwargs):
         c = self.cursor
         if 'sender' in kwargs:

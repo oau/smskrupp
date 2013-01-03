@@ -5,11 +5,13 @@ import sys
 
 import core
 
+
 def usage():
     print("%s add-group <name> <keyword>" % sys.argv[0])
     print("%s list-groups" % sys.argv[0])
     print("%s list-members <group>" % sys.argv[0])
     print("%s add-member <number> <alias> <group>" % sys.argv[0])
+    print("%s change-number <number> <new_number> <group>" % sys.argv[0])
     print("%s rm-member <number> <group|ALL>" % sys.argv[0])
     print("%s set-sender <number> <group>" % sys.argv[0])
     print("%s set-admin <number> <group>" % sys.argv[0])
@@ -68,6 +70,23 @@ elif argv[1] == u'add-member':
     mid = data.add_number(number, alias, group_id)
     if mid == None:
         print(u"error: alias already exists")
+elif argv[1] == u'change-number':
+    if len(argv) != 5:
+        usage()
+    number, new_number, group = argv[2:]
+    number = core.normalize_number(number)
+    new_number = core.normalize_number(new_number)
+
+    if not number or not new_number:
+        print(u"number error!")
+        sys.exit(1)
+    group_id = data.get_group_id(group)
+    if not group_id:
+        print(u"group error!")
+        sys.exit(1)
+    mid = data.change_number(number, new_number, group_id=group_id)
+    if mid == None:
+        print(u"error: unable to change number")
 elif argv[1] == u'rm-member':
     if len(argv) != 4:
         usage()
