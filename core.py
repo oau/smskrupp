@@ -120,11 +120,11 @@ class Data:
         ''' return array of dicts describing members (id, number, alias, sender, admin)
         '''
         c = self.cursor
-        c.execute('select id,number,alias,sender,admin from qq_groupMembers '+
+        c.execute('select id,number,alias,sender,admin from qq_groupMembers ' +
                 'where groupId=?',
                 (group_id, ))
-        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] ==1 ),
-            'admin':(row[4]==1)} for row in c]
+        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] == 1),
+            'admin':(row[4] == 1)} for row in c]
 
     def get_groups(self, number=None):
         ''' returns array of dicts describing groups (id, name keyword) containing number
@@ -176,7 +176,7 @@ class Data:
         x = c.fetchone()
         if not x:
             return None
-        return {'id':x[0], 'name':x[1], 'keyword':x[2]}
+        return {'id': x[0], 'name': x[1], 'keyword': x[2]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -356,19 +356,19 @@ class Data:
                 return row[3], row[2]
         return 0, 0
 
-
     def increment_sent_stats(self, group_id):
         day = strftime("%Y-%m-%d %H:%M:%S", localtime())
         c = self.cursor
-        c.execute("insert or ignore into qq_groupStatistics "+
-                  "(day, groupId, cnt) "+
+        c.execute("insert or ignore into qq_groupStatistics " +
+                  "(day, groupId, cnt) " +
                   "values (?,?,0)",
                   (day, group_id))
-        c.execute("update qq_groupStatistics "+
+        c.execute("update qq_groupStatistics " +
                   "set cnt=cnt+1 "
                   "where day=? and groupId=?",
                   (day, group_id))
         self.conn.commit()
+
 
 class Doer:
     def __init__(self, sender):
