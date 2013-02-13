@@ -135,12 +135,12 @@ elif argv[1] == u'dump-groups':
         print(len(argv))
         usage()
     for g in data.get_groups():
-        print(u'smskrupp add-group %s %s'%(g['name'], g['keyword']))
+        print(u'smskrupp add-group "%s" "%s"'%(g['name'], g['keyword']))
         for member in data.get_group_members(g['id']):
-            print(u'smskrupp add-member %s %s %s'%(member['number'], member['alias'], g['name']))
+            print(u'smskrupp add-member "%s" "%s" "%s"'%(member['number'], member['alias'], g['name']))
             if member['sender']:
-                print(u'smskrupp set-sender %s %s'%(member['number'], g['name']))
+                print(u'smskrupp set-sender "%s" "%s"'%(member['number'], g['name']))
             if member['admin']:
-                print(u'smskrupp set-admin %s %s'%(member['number'], g['name']))
+                print(u'smskrupp set-admin "%s" "%s"'%(member['number'], g['name']))
 else:
     usage()
