@@ -314,3 +314,4 @@ class FakeSender:
 
     def send(self, dest, msg):
         self.sendouts.append((dest, msg))
+        return 1

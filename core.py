@@ -357,7 +357,9 @@ class Data:
         return 0, 0
 
 
-    def increment_sent_stats(self, group_id):
+    def increment_sent_stats(self, group_id, cnt=1):
+        ''' update statistics table
+        '''
         day = strftime("%Y-%m-%d %H:%M:%S", localtime())
         c = self.cursor
         c.execute("insert or ignore into qq_groupStatistics "+
@@ -365,9 +367,9 @@ class Data:
                   "values (?,?,0)",
                   (day, group_id))
         c.execute("update qq_groupStatistics "+
-                  "set cnt=cnt+1 "
+                  "set cnt=cnt+? "
                   "where day=? and groupId=?",
-                  (day, group_id))
+                  (cnt, day, group_id))
         self.conn.commit()
 
 class Doer:
@@ -454,8 +456,8 @@ class Doer:
         self._log("doing sendout to group %s" % group['name'])
         members = self.data.get_group_members(group['id'])
         for member in members:
-            self.sender.send(member['number'], msg)
-            self.data.increment_sent_stats(group['id'])
+            cnt = self.sender.send(member['number'], msg)
+            self.data.increment_sent_stats(group['id'], cnt)
 
     def _handle_message(self, ids, src, phone, orig_msg):
         self._log("got message '%s' from %s to %s" % (orig_msg, src, phone))
@@ -529,12 +531,15 @@ class Sender:
             log.write("[%s] [doer] %s\n" % (t, text.encode('utf-8')))
 
     def send(self, dest, msg):
+        ''' return number of messages sent
+        '''
         # this length calculation will fail will not work for some special
         # gsm7 chars like [
         if len(msg) <= 160:
             message = {'Text': msg, 'SMSC': {'Location': 1}, 'Number': dest}
             self._log("sending single part message " + str(message))
             self.smsd.InjectSMS([message])
+            return 1
         else:
             # multipart
             self._log("sending multipart message")
@@ -556,6 +561,7 @@ class Sender:
                 # Actually send the message
                 self._log("sending part of message: " + str(message))
                 self.smsd.InjectSMS([message])
+            return len(encoded)
 
 
 class Helper:
