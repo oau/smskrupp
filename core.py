@@ -4,7 +4,7 @@ from __future__ import print_function
 
 from config import config
 import sqlite3
-from time import strftime, localtime
+from time import strftime, localtime, mktime
 
 
 def normalize_number(number):
@@ -78,19 +78,25 @@ class Data:
                       (member_id,))
             self.conn.commit()
 
-    def add_group(self, name, keyword):
+    def add_group(self, name, keyword, monthLimit=-1):
         ''' create a group and return id of the created group
         '''
         c = self.cursor
-        c.execute("insert into qq_groups (name,keyword) " +
-                  "values (?,?)",
-                  (name, keyword))
+        c.execute("insert into qq_groups (name,keyword, monthLimit) " +
+                  "values (?,?,?)",
+                  (name, keyword, monthLimit))
         self.conn.commit()
         c.execute('select id from qq_groups where name=?', (name,))
         group_id = None
         for row in c:
             group_id = row[0]
         return group_id
+
+    def set_group_month_limit(self, group_id, monthLimit):
+        c = self.cursor
+        c.execute("update qq_groups set monthLimit=? where id=?",
+                (monthLimit, group_id))
+        self.conn.commit()
 
     def remove_group(self, gid):
         ''' completely remove a group and all it's members
@@ -131,33 +137,33 @@ class Data:
         '''
         c = self.cursor
         if number:
-            c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
+            c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
                     + 'join qq_groups g on g.id = m.groupId '
                     + 'where m.number=? order by g.name asc',
                     (number,))
         else:
-            c.execute('select id,name,keyword from qq_groups order by name asc')
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
+            c.execute('select id,name,keyword,monthLimit from qq_groups order by name asc')
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
 
     def get_send_groups(self, sender):
-        ''' returns array of dicts describing groups (id, name keyword) where the sender can send
+        ''' returns array of dicts describing groups (id, name keyword, monthLimit) where the sender can send
         '''
         c = self.cursor
-        c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
+        c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.sender=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
 
     def get_admin_groups(self, sender):
-        ''' returns array of dicts describing groups (id, name keyword) where the sender can admin
+        ''' returns array of dicts describing groups (id, name keyword, month_limit) where the sender can admin
         '''
         c = self.cursor
-        c.execute('select g.id, g.name, g.keyword from qq_groupMembers m '
+        c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.admin=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
 
     def get_group_id(self, name):
         info = self.get_group_info(name=name)
@@ -168,15 +174,15 @@ class Data:
     def get_group_info(self, group_id=None, name=None):
         c = self.cursor
         if group_id:
-            c.execute('select id,name,keyword from qq_groups where id=?', (group_id,))
+            c.execute('select id,name,keyword,monthLimit from qq_groups where id=?', (group_id,))
         elif name:
-            c.execute('select id,name,keyword from qq_groups where name=?', (name,))
+            c.execute('select id,name,keyword,monthLimit from qq_groups where name=?', (name,))
         else:
             return None
         x = c.fetchone()
         if not x:
             return None
-        return {'id':x[0], 'name':x[1], 'keyword':x[2]}
+        return {'id':x[0], 'name':x[1], 'keyword':x[2], 'month_limit':x[3]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -272,6 +278,9 @@ class Data:
         c = self.cursor
         c.execute('delete from qq_groupMembers')
         c.execute('delete from qq_groups')
+        c.execute('delete from inbox')
+        c.execute('delete from outbox')
+        c.execute('delete from sentitems')
         self.conn.commit()
 
     def cleanup(self):
@@ -371,6 +380,19 @@ class Data:
                   "where day=? and groupId=?",
                   (cnt, day, group_id))
         self.conn.commit()
+
+    def get_number_of_messages(self, group_id, days):
+        ''' count the number of massages for this group over the last <days> days
+        '''
+        day = strftime("%Y-%m-%d %H:%M:%S", localtime(mktime(localtime()) - 3600*24*days))
+        c = self.cursor
+        c.execute("select sum(cnt) from qq_groupStatistics "+
+                  "where groupId=? and day >= ?", (group_id,day))
+        row = c.fetchone()
+        if not row[0]: return 0
+        return row[0]
+
+
 
 class Doer:
     def __init__(self, sender):
@@ -475,6 +497,9 @@ class Doer:
                 self._log("Warning: Unauthorized sendout command '%s' from %s to %s" %
                         (orig_msg, src, phone))
                 status = 'unauthorized'
+            elif group['month_limit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['month_limit']:
+                self._log("Warning: limit %d reached for group '%s'" % (group['month_limit'], group['name']))
+                status = 'limited'
             else:
                 self.sendout(group['id'], msg)
                 status = 'send'

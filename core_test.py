@@ -129,6 +129,7 @@ class TestDoer:
         self.data.set_member_info(mid, sender=True)
         self.data.fake_incoming(number, phone, "hello")
         self.doer.run()
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_stop_command(self):
         number = "+46736000001"
@@ -138,6 +139,7 @@ class TestDoer:
         self.data.fake_incoming(number, phone, "stop")
         self.doer.run()
         assert 0 == len(self.data.get_group_members(gid))
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_stop_command_prefix(self):
         number = "+46736000001"
@@ -147,6 +149,7 @@ class TestDoer:
         self.data.fake_incoming(number, phone, "/keyword stop")
         self.doer.run()
         assert 0 == len(self.data.get_group_members(gid))
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_unauthorized(self):
         number = "+46736000001"
@@ -160,6 +163,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # help message
         assert self.sender.sendouts[0][0] == number
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add(self):
         number = "+46736000001"
@@ -174,6 +178,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_sender(self):
         number = "+46736000001"
@@ -188,6 +193,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_admin(self):
         number = "+46736000001"
@@ -202,6 +208,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_keyword(self):
         number = "+46736000001"
@@ -216,6 +223,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_sender_keyword(self):
         number = "+46736000001"
@@ -230,6 +238,7 @@ class TestDoer:
         assert not "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_admin_keyword(self):
         number = "+46736000001"
@@ -244,6 +253,7 @@ class TestDoer:
         assert "+4673123" in [x['number'] for x in self.data.get_group_admins(gid)]
         assert len(self.sender.sendouts) == 1  # welcome message
         assert self.sender.sendouts[0][0] == "+4673123"
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_sendout_unauthorized(self):
         number = "+46736000001"
@@ -257,6 +267,7 @@ class TestDoer:
         doer.run()
         assert 1 == len(s.sendouts)
         assert s.sendouts[0][0] == number
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_sendout_unknown_number(self):
         number = "+46736000001"
@@ -266,6 +277,7 @@ class TestDoer:
         self.data.fake_incoming(number, phone, "test")
         doer.run()
         assert 0 == len(s.sendouts)
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_sendout_keyword_unauthorized(self):
         number = "+46736000001"
@@ -278,6 +290,21 @@ class TestDoer:
         self.data.fake_incoming(number, phone, "#keyword test")
         doer.run()
         assert 0 == len(s.sendouts)
+        assert len(self.data.get_unprocessed()) == 0
+
+    def test_run_sendout_keyword_limit_reached(self):
+        number = "+46736000001"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword", 0)
+        mid = self.data.add_number(number, "alias", gid)
+        self.data.set_member_info(mid, sender=True)
+
+        s = FakeSender()
+        doer = core.Doer(s)
+        self.data.fake_incoming(number, phone, "#keyword test")
+        doer.run()
+        assert 0 == len(s.sendouts)
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_sendout(self):
         number = "+46736000001"
@@ -292,6 +319,7 @@ class TestDoer:
         doer.run()
         assert 1 == len(s.sendouts)  # test message
         assert s.sendouts[0][0] == number
+        assert len(self.data.get_unprocessed()) == 0
 
     def test_run_sendout_prefix(self):
         number = "+46736000001"
@@ -306,7 +334,7 @@ class TestDoer:
         doer.run()
         assert 1 == len(s.sendouts)
         assert (number, "#keyword test") == s.sendouts[0]
-
+        assert len(self.data.get_unprocessed()) == 0
 
 class FakeSender:
     def __init__(self):
