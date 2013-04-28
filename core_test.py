@@ -6,6 +6,7 @@ class TestData:
     def setUp(self):
         config.db = config.test_db
         config.smsdrc = config.test_smsdrc
+        config.quiet_hours = []  # Time-travel library needed to test the quiet hours functionality
         self.data = core.Data()
         self.data.setup_db()
         self.data.purge_all_data()
@@ -78,6 +79,19 @@ class TestData:
         self.data.remove_number(member_id=mid)
         numbers = self.data.get_group_members(gid)
         assert len(numbers) == 0
+
+    def test_change_number(self):
+        number = "+46736000001"
+        group_name = "group1"
+        gid = self.data.add_group(group_name, "keyword")
+        mid = self.data.add_number(number, "alias", gid)
+        self.data.set_member_info(mid, sender=True)
+        new_number = "+46736000002"
+        self.data.change_number(number, new_number, group_id=gid)
+        numbers = self.data.get_group_members(gid)
+        assert len(numbers) == 1
+        member = numbers[0]
+        assert member['number'] == new_number
 
     def test_add_sender(self):
         number = "1234"

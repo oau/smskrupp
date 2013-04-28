@@ -5,6 +5,7 @@ from __future__ import print_function
 from config import config
 import sqlite3
 from time import strftime, localtime, mktime
+import datetime
 
 
 def normalize_number(number):
@@ -55,6 +56,16 @@ class Data:
                   (alias, number, group_id))
         self.conn.commit()
         return self.get_member_id(number, group_id)
+
+    def change_number(self, number, new_number, group_id=None):
+        ''' Updates number if number already exists in group
+            does nothing if number does not exist.
+        '''
+        c = self.cursor
+        c.execute("UPDATE `qq_groupMembers` SET `number`=? WHERE `number`=? AND `groupId`=?",
+                  (new_number, number, group_id))
+        self.conn.commit()
+        return self.get_member_id(new_number, group_id)
 
     def set_member_info(self, member_id, **kwargs):
         c = self.cursor
@@ -126,11 +137,11 @@ class Data:
         ''' return array of dicts describing members (id, number, alias, sender, admin)
         '''
         c = self.cursor
-        c.execute('select id,number,alias,sender,admin from qq_groupMembers '+
+        c.execute('select id,number,alias,sender,admin from qq_groupMembers ' +
                 'where groupId=?',
                 (group_id, ))
-        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] ==1 ),
-            'admin':(row[4]==1)} for row in c]
+        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] == 1),
+            'admin':(row[4] == 1)} for row in c]
 
     def get_groups(self, number=None):
         ''' returns array of dicts describing groups (id, name keyword) containing number
@@ -182,7 +193,7 @@ class Data:
         x = c.fetchone()
         if not x:
             return None
-        return {'id':x[0], 'name':x[1], 'keyword':x[2], 'month_limit':x[3]}
+        return {'id': x[0], 'name': x[1], 'keyword': x[2], 'month_limit': x[3]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -365,17 +376,16 @@ class Data:
                 return row[3], row[2]
         return 0, 0
 
-
     def increment_sent_stats(self, group_id, cnt=1):
         ''' update statistics table
         '''
         day = strftime("%Y-%m-%d %H:%M:%S", localtime())
         c = self.cursor
-        c.execute("insert or ignore into qq_groupStatistics "+
-                  "(day, groupId, cnt) "+
+        c.execute("insert or ignore into qq_groupStatistics " +
+                  "(day, groupId, cnt) " +
                   "values (?,?,0)",
                   (day, group_id))
-        c.execute("update qq_groupStatistics "+
+        c.execute("update qq_groupStatistics " +
                   "set cnt=cnt+? "
                   "where day=? and groupId=?",
                   (cnt, day, group_id))
@@ -391,7 +401,6 @@ class Data:
         row = c.fetchone()
         if not row[0]: return 0
         return row[0]
-
 
 
 class Doer:
@@ -500,7 +509,12 @@ class Doer:
             elif group['month_limit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['month_limit']:
                 self._log("Warning: limit %d reached for group '%s'" % (group['month_limit'], group['name']))
                 status = 'limited'
+            elif self.is_quiet_period():
+                self._log("Info: message to '%s' not sent because of quiet period" % (group['name']))
+                status = 'quieted'
             else:
+                group = action['group']
+                msg = action['msg']
                 self.sendout(group['id'], msg)
                 status = 'send'
         elif action['action'] in ['add', 'add_sender', 'add_admin']:
@@ -543,6 +557,9 @@ class Doer:
         for m in messages:
             self._handle_message(m['ids'], m['src'], m['phone'], m['text'])
         self.cleanup()
+
+    def is_quiet_period(self):
+        return datetime.datetime.now().time().hour in config.quiet_hours
 
 
 class Sender:
