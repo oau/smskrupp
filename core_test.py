@@ -93,6 +93,21 @@ class TestData:
         member = numbers[0]
         assert member['number'] == new_number
 
+    def test_change_number_fail(self):
+        number1 = "+46736000001"
+        number2 = "+46736000002"
+        group_name = "group1"
+        gid = self.data.add_group(group_name, "keyword")
+        mid = self.data.add_number(number1, "alias1", gid)
+        mid = self.data.add_number(number2, "alias2", gid)
+        self.data.set_member_info(mid, sender=True)
+        e = self.data.change_number(number1, number2, group_id=gid)
+        numbers = self.data.get_group_members(gid)
+        assert len(e) == 1
+        assert len(numbers) == 2
+        assert numbers[0]['number'] == number1
+        assert numbers[1]['number'] == number2
+
     def test_add_sender(self):
         number = "1234"
         gid = self.data.add_group("group1", "keyword")
