@@ -5,8 +5,6 @@ from __future__ import print_function
 from config import config
 import sqlite3
 from time import strftime, localtime, mktime
-import datetime
-
 
 def normalize_number(number):
     if number.startswith('07'):
@@ -525,9 +523,6 @@ class Doer:
             elif group['monthLimit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['monthLimit']:
                 self._log("Warning: limit %d reached for group '%s'" % (group['monthLimit'], group['name']))
                 status = 'limited'
-            elif self.is_quiet_period():
-                self._log("Info: message to '%s' not sent because of quiet period" % (group['name']))
-                status = 'quieted'
             else:
                 group = action['group']
                 msg = action['msg']
@@ -573,9 +568,6 @@ class Doer:
         for m in messages:
             self._handle_message(m['ids'], m['src'], m['phone'], m['text'])
         self.cleanup()
-
-    def is_quiet_period(self):
-        return datetime.datetime.now().time().hour in config.quiet_hours
 
 
 class Sender:

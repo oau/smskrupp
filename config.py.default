@@ -11,6 +11,5 @@ class Config:
     default_phone = 'phone1'
     debug = False
     flask_key = ''
-    quiet_hours = [21, 22, 23, 0, 1, 2, 3, 4, 5, 6]
 
 config = Config()
