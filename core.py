@@ -6,7 +6,6 @@ from config import config
 import sqlite3
 from time import strftime, localtime, mktime
 
-
 def normalize_number(number):
     if number.startswith('07'):
         return '+46' + number[1:]
@@ -55,6 +54,32 @@ class Data:
                   (alias, number, group_id))
         self.conn.commit()
         return self.get_member_id(number, group_id)
+
+    def change_number(self, number, new_number, group_id=None):
+        ''' Updates number if number already exists in group
+            does nothing if number does not exist. If group_id isn't given it will change
+            in all groups.
+            return list of error strings
+        '''
+        c = self.cursor
+        ids = []
+        e = []
+        if group_id != None:
+            ids = [self.get_member_id(number, group_id)]
+        else:
+            ids = self.get_member_ids(number)
+        for mid in ids:
+            try:
+                c.execute("UPDATE `qq_groupMembers` SET `number`=? WHERE `id`=? ",
+                          (new_number, mid))
+            except sqlite3.IntegrityError:
+                group = 1
+                m = self.get_member_info(mid)
+                group = self.get_group_info(m['groupId'])['name']
+                e.append("Couldn't change number %s to %s in group %s, that number already exists"%
+                        (number, new_number, group))
+        self.conn.commit()
+        return e
 
     def set_member_info(self, member_id, **kwargs):
         c = self.cursor
@@ -126,11 +151,11 @@ class Data:
         ''' return array of dicts describing members (id, number, alias, sender, admin)
         '''
         c = self.cursor
-        c.execute('select id,number,alias,sender,admin from qq_groupMembers '+
+        c.execute('select id,number,alias,sender,admin from qq_groupMembers ' +
                 'where groupId=?',
                 (group_id, ))
-        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] ==1 ),
-            'admin':(row[4]==1)} for row in c]
+        return [{'id': row[0], 'number': row[1], 'alias': row[2], 'sender': (row[3] == 1),
+            'admin':(row[4] == 1)} for row in c]
 
     def get_groups(self, number=None):
         ''' returns array of dicts describing groups (id, name keyword) containing number
@@ -143,7 +168,7 @@ class Data:
                     (number,))
         else:
             c.execute('select id,name,keyword,monthLimit from qq_groups order by name asc')
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
 
     def get_send_groups(self, sender):
         ''' returns array of dicts describing groups (id, name keyword, monthLimit) where the sender can send
@@ -153,7 +178,7 @@ class Data:
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.sender=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
 
     def get_admin_groups(self, sender):
         ''' returns array of dicts describing groups (id, name keyword, month_limit) where the sender can admin
@@ -163,7 +188,7 @@ class Data:
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.admin=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'month_limit':row[3]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
 
     def get_group_id(self, name):
         info = self.get_group_info(name=name)
@@ -182,7 +207,7 @@ class Data:
         x = c.fetchone()
         if not x:
             return None
-        return {'id':x[0], 'name':x[1], 'keyword':x[2], 'month_limit':x[3]}
+        return {'id': x[0], 'name': x[1], 'keyword': x[2], 'monthLimit': x[3]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -365,17 +390,16 @@ class Data:
                 return row[3], row[2]
         return 0, 0
 
-
     def increment_sent_stats(self, group_id, cnt=1):
         ''' update statistics table
         '''
         day = strftime("%Y-%m-%d %H:%M:%S", localtime())
         c = self.cursor
-        c.execute("insert or ignore into qq_groupStatistics "+
-                  "(day, groupId, cnt) "+
+        c.execute("insert or ignore into qq_groupStatistics " +
+                  "(day, groupId, cnt) " +
                   "values (?,?,0)",
                   (day, group_id))
-        c.execute("update qq_groupStatistics "+
+        c.execute("update qq_groupStatistics " +
                   "set cnt=cnt+? "
                   "where day=? and groupId=?",
                   (cnt, day, group_id))
@@ -391,7 +415,6 @@ class Data:
         row = c.fetchone()
         if not row[0]: return 0
         return row[0]
-
 
 
 class Doer:
@@ -497,10 +520,12 @@ class Doer:
                 self._log("Warning: Unauthorized sendout command '%s' from %s to %s" %
                         (orig_msg, src, phone))
                 status = 'unauthorized'
-            elif group['month_limit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['month_limit']:
-                self._log("Warning: limit %d reached for group '%s'" % (group['month_limit'], group['name']))
+            elif group['monthLimit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['monthLimit']:
+                self._log("Warning: limit %d reached for group '%s'" % (group['monthLimit'], group['name']))
                 status = 'limited'
             else:
+                group = action['group']
+                msg = action['msg']
                 self.sendout(group['id'], msg)
                 status = 'send'
         elif action['action'] in ['add', 'add_sender', 'add_admin']:
