@@ -47,8 +47,8 @@ elif argv[1] == u'list-groups':
     for g in data.get_groups():
         s = g['name']
         sent = data.get_number_of_messages(g['id'], 30)
-        if g['month_limit'] >= 0:
-            s += "\t<%d/%d>"%(sent,g['month_limit'])
+        if g['monthLimit'] >= 0:
+            s += "\t<%d/%d>"%(sent,g['monthLimit'])
         else:
             s += "\t<%d>"%(sent)
         print(s)
