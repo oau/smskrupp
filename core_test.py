@@ -159,6 +159,23 @@ class TestDoer:
         self.doer.run()
         assert len(self.data.get_unprocessed()) == 0
 
+    def test_run_remove_number(self):
+        number1 = "+46736000001"
+        number2 = "+46736000002"
+        phone = "phone1"
+        gid = self.data.add_group("group1", "keyword")
+        mid1 = self.data.add_number(number1, "alias1", gid)
+        self.data.add_number(number2, "alias2", gid)
+        self.data.set_member_info(mid1, sender=True, admin=True)
+
+        assert 2 == len(self.data.get_group_members(gid))
+        s = FakeSender()
+        doer = core.Doer(s)
+        self.data.fake_incoming(number1, phone, "/keyword remove "+number2)
+        doer.run()
+        assert 1 == len(self.data.get_group_members(gid))
+        assert len(self.data.get_unprocessed()) == 0
+
     def test_run_stop_command(self):
         number = "+46736000001"
         phone = "phone1"
@@ -173,10 +190,13 @@ class TestDoer:
         number = "+46736000001"
         phone = "phone1"
         gid = self.data.add_group("group1", "keyword")
+        gid2 = self.data.add_group("group2", "keyword2")
         self.data.add_number(number, "alias", gid)
+        self.data.add_number(number, "alias", gid2)
         self.data.fake_incoming(number, phone, "/keyword stop")
         self.doer.run()
         assert 0 == len(self.data.get_group_members(gid))
+        assert 1 == len(self.data.get_group_members(gid2))
         assert len(self.data.get_unprocessed()) == 0
 
     def test_run_admin_command_add_unauthorized(self):
@@ -363,6 +383,7 @@ class TestDoer:
         assert 1 == len(s.sendouts)
         assert (number, "#keyword test") == s.sendouts[0]
         assert len(self.data.get_unprocessed()) == 0
+
 
 class FakeSender:
     def __init__(self):

@@ -459,6 +459,8 @@ class Doer:
             if not group:
                 # can't figure out group, give up
                 return {'action': 'invalid'}
+            else:
+                groups = [group]
 
             if admin_cmd in ["stop", "stopp"]:
                 return {'action': 'stop', 'groups': groups}
@@ -476,6 +478,10 @@ class Doer:
                 else:
                     action = 'add'
                     number = normalize_number(rest)
+            elif admin_cmd.startswith('remove '):
+                action = 'remove'
+                rest = admin_cmd[len('remove '):].strip()
+                number = normalize_number(rest)
             if action and number:
                 return {'action': action, 'number': number, 'group': group}
             else:
@@ -550,6 +556,16 @@ class Doer:
                 welcomes = Helper().get_welcomes(group['name'], group['keyword'], is_sender, is_admin, user_groups, user_send_groups)
                 for msg in welcomes:
                     self.sender.send(action['number'], msg)
+        elif action['action'] == 'remove':
+            self._log("removing number '%s' from group '%s'" % (action['number'], action['group']['name']))
+            mid = self.data.get_member_id(action['number'], action['group']['id'])
+            if not mid:
+                self._log("info: couldn't find number '%s' in group '%s'" % (action['number'], action['group']['name']))
+                self.sender.send(src, "couldnt find number")
+            else:
+                self.data.remove_number(member_id=mid)
+                self.sender.send(src, "removed")
+
         elif action['action'] == 'invalid':
             # send help message
             user_groups = self.data.get_groups(number=src)
