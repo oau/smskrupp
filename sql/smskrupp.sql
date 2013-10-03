@@ -15,6 +15,7 @@ id integer primary key autoincrement,
 name varchar(50) not null,
 keyword varchar(10) not null,
 monthLimit integer not null default -1,
+lengthLimit integer not null default -1,
 unique (name),
 unique (keyword));
 

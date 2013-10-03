@@ -9,6 +9,7 @@ import core
 def usage():
     print("%s add-group <name> <keyword>" % sys.argv[0])
     print("%s set-month-limit <group> <limit>" % sys.argv[0])
+    print("%s set-length-limit <group> <limit>" % sys.argv[0])
     print("%s list-groups" % sys.argv[0])
     print("%s list-members <group>" % sys.argv[0])
     print("%s add-member <number> <alias> <group>" % sys.argv[0])
@@ -43,14 +44,24 @@ elif argv[1] == u'set-month-limit':
         print(u"no such group!")
         sys.exit(1)
     data.set_group_month_limit(gid, argv[3])
+elif argv[1] == u'set-length-limit':
+    if len(argv) != 4:
+        usage()
+    gid = data.get_group_id(argv[2])
+    if not gid:
+        print(u"no such group!")
+        sys.exit(1)
+    data.set_group_length_limit(gid, argv[3])
 elif argv[1] == u'list-groups':
     for g in data.get_groups():
-        s = g['name']
+        s = g['name'] + "\t[%s]"%g['keyword']
         sent = data.get_number_of_messages(g['id'], 30)
         if g['monthLimit'] >= 0:
             s += "\t<%d/%d>"%(sent,g['monthLimit'])
         else:
             s += "\t<%d>"%(sent)
+        if g['lengthLimit'] >=0:
+            s += "\tmax-len: %d"%(g['lengthLimit'])
         print(s)
 elif argv[1] == u'list-members':
     if len(argv) != 3:

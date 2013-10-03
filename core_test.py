@@ -10,6 +10,19 @@ class TestData:
         self.data.setup_db()
         self.data.purge_all_data()
 
+    def test_part_count(self):
+        assert 1 == core.count_parts("a"*160)
+        assert 2 == core.count_parts("a"*161)
+        assert 2 == core.count_parts("a"*(153*2))
+        assert 3 == core.count_parts("a"*(153*2+1))
+
+    def test_max_letters_in_n_part_sms(self):
+        assert 160 == core.max_letters_in_n_part_sms(1)
+        assert 153*2 == core.max_letters_in_n_part_sms(2)
+        assert 153*3 == core.max_letters_in_n_part_sms(3)
+        assert 153*4 == core.max_letters_in_n_part_sms(4)
+        assert 153*5 == core.max_letters_in_n_part_sms(5)
+
     def test_add_group(self):
         gid = self.data.add_group("group1", "keyword")
         assert isinstance(gid, int)

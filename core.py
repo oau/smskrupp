@@ -15,6 +15,24 @@ def normalize_number(number):
         return number
     return None
 
+def count_parts(msg):
+    smsinfo = {
+            'Class': 1,
+            'Unicode': False,
+            'Entries':  [{
+                    'ID': 'ConcatenatedTextLong',
+                    'Buffer': msg
+                }]}
+    from gammu import EncodeSMS
+    encoded = EncodeSMS(smsinfo)
+    return len(encoded)
+
+def max_letters_in_n_part_sms(n):
+    if n <= 0:
+        return 0
+    elif n == 1:
+        return 160
+    return n * 153
 
 class Data:
     def __init__(self):
@@ -123,6 +141,12 @@ class Data:
                 (monthLimit, group_id))
         self.conn.commit()
 
+    def set_group_length_limit(self, group_id, lengthLimit):
+        c = self.cursor
+        c.execute("update qq_groups set lengthLimit=? where id=?",
+                (lengthLimit, group_id))
+        self.conn.commit()
+
     def remove_group(self, gid):
         ''' completely remove a group and all it's members
         '''
@@ -158,37 +182,37 @@ class Data:
             'admin':(row[4] == 1)} for row in c]
 
     def get_groups(self, number=None):
-        ''' returns array of dicts describing groups (id, name keyword) containing number
+        ''' returns array of dicts describing groups (id, name, keyword, monthLimit, lengthLimit) containing number
         '''
         c = self.cursor
         if number:
-            c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
+            c.execute('select g.id, g.name, g.keyword, g.monthLimit, g.lengthLimit from qq_groupMembers m '
                     + 'join qq_groups g on g.id = m.groupId '
                     + 'where m.number=? order by g.name asc',
                     (number,))
         else:
-            c.execute('select id,name,keyword,monthLimit from qq_groups order by name asc')
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
+            c.execute('select id,name,keyword,monthLimit,lengthLimit from qq_groups order by name asc')
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3], 'lengthLimit':row[4]} for row in c]
 
     def get_send_groups(self, sender):
-        ''' returns array of dicts describing groups (id, name keyword, monthLimit) where the sender can send
+        ''' returns array of dicts describing groups (id, name keyword, monthLimit, lengthLimit) where the sender can send
         '''
         c = self.cursor
-        c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
+        c.execute('select g.id, g.name, g.keyword, g.monthLimit, g.lengthLimit from qq_groupMembers m '
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.sender=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3], 'lengthLimit':row[4]} for row in c]
 
     def get_admin_groups(self, sender):
-        ''' returns array of dicts describing groups (id, name keyword, month_limit) where the sender can admin
+        ''' returns array of dicts describing groups (id, name keyword, month_limit, lengthLimit) where the sender can admin
         '''
         c = self.cursor
-        c.execute('select g.id, g.name, g.keyword, g.monthLimit from qq_groupMembers m '
+        c.execute('select g.id, g.name, g.keyword, g.monthLimit, g.lengthLimit from qq_groupMembers m '
                 + 'join qq_groups g on g.id = m.groupId '
                 + 'where m.number=? and m.admin=1 order by g.name asc',
                 (sender,))
-        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3]} for row in c]
+        return [{'id':row[0], 'name':row[1], 'keyword':row[2], 'monthLimit':row[3], 'lengthLimit':row[4]} for row in c]
 
     def get_group_id(self, name):
         info = self.get_group_info(name=name)
@@ -199,15 +223,15 @@ class Data:
     def get_group_info(self, group_id=None, name=None):
         c = self.cursor
         if group_id:
-            c.execute('select id,name,keyword,monthLimit from qq_groups where id=?', (group_id,))
+            c.execute('select id,name,keyword,monthLimit, lengthLimit from qq_groups where id=?', (group_id,))
         elif name:
-            c.execute('select id,name,keyword,monthLimit from qq_groups where name=?', (name,))
+            c.execute('select id,name,keyword,monthLimit, lengthLimit from qq_groups where name=?', (name,))
         else:
             return None
         x = c.fetchone()
         if not x:
             return None
-        return {'id': x[0], 'name': x[1], 'keyword': x[2], 'monthLimit': x[3]}
+        return {'id': x[0], 'name': x[1], 'keyword': x[2], 'monthLimit': x[3], 'lengthLimit': x[4]}
 
     def get_member_id(self, number, group_id):
         c = self.cursor
@@ -529,6 +553,10 @@ class Doer:
             elif group['monthLimit'] >= 0 and self.data.get_number_of_messages(group['id'], 30) >= group['monthLimit']:
                 self._log("Warning: limit %d reached for group '%s'" % (group['monthLimit'], group['name']))
                 status = 'limited'
+            elif group['lengthLimit'] >= 0 and count_parts(msg) > group['lengthLimit']:
+                self._log("Warning: too long message (%d) for group '%s'" % (len(msg), group['name']))
+                status = 'lengthlimited'
+                self.sender.send(src, Helper().get_too_long(group['lengthLimit'], max_letters_in_n_part_sms(group['lengthLimit'])))
             else:
                 group = action['group']
                 msg = action['msg']
@@ -662,3 +690,6 @@ class Helper:
 
             msgs.append(msg)
         return msgs
+
+    def get_too_long(self, max_parts, max_letters):
+        return u"För långt sms, max längd är %d sms eller %d tecken."%(max_parts, max_letters)
