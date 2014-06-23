@@ -11,5 +11,7 @@ class Config:
     default_phone = 'phone1'
     debug = False
     flask_key = ''
+    send_site_host = "127.0.0.1"
+    send_site_port = 5000
 
 config = Config()

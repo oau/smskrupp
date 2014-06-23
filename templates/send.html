@@ -1,0 +1,16 @@
+<html>
+    <head></head>
+    <body>
+      {% for message in get_flashed_messages() %}
+          <div class=flash>{{ message }}</div>
+      {% endfor %}
+        <form method=post>
+            <select name=list>
+                {% for list in lists %}
+                    <option value={{ list.name }}>{{ list.name }}</option>
+                {% endfor %}
+            </select><br>
+            <textarea cols=40 rows=3 name=text></textarea><br>
+            <input type=submit value=send>
+    </body>
+</html>

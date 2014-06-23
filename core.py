@@ -6,6 +6,8 @@ from config import config
 import sqlite3
 from time import strftime, localtime, mktime
 
+DUMMY_NUMBER = "dummynumber"
+
 def normalize_number(number):
     if number.startswith('07'):
         return '+46' + number[1:]
@@ -414,6 +416,24 @@ class Data:
                 return row[3], row[2]
         return 0, 0
 
+    def get_webuser(self, username):
+        """ return user """
+        c = self.cursor
+        c.execute('select hash, username, id from qq_webUsers where username=?', (username,))
+        row = c.fetchone()
+        if row:
+            return {'hash': row[0], 'username': row[1], 'id': row[2]}
+        return None
+
+    def get_webuser_from_id(self, id):
+        """ return user """
+        c = self.cursor
+        c.execute('select hash, username, id from qq_webUsers where id=?', (id,))
+        row = c.fetchone()
+        if row:
+            return {'hash': row[0], 'username': row[1], 'id': row[2]}
+        return None
+
     def increment_sent_stats(self, group_id, cnt=1):
         ''' update statistics table
         '''
@@ -455,7 +475,11 @@ class Doer:
             log.write("[%s] [doer] %s\n" % (t, text.encode('utf-8')))
 
     def _parse_action(self, src, orig_msg):
-        groups = self.data.get_groups(number=src)
+        groups = None
+        if src == DUMMY_NUMBER:
+            groups = self.data.get_groups()
+        else:
+            groups = self.data.get_groups(number=src)
         send_groups = self.data.get_send_groups(src)
         lmsg = orig_msg.lower().strip()
         if lmsg == 'stop' or lmsg == 'stopp':
@@ -513,12 +537,13 @@ class Doer:
 
         if lmsg.startswith(config.send_prefix):
             send_msg = None
+            group = None
             send_cmd = orig_msg[len(config.send_prefix):]
             lfirst_word = send_cmd.split(" ")[0].lower()
             for g in groups:
                 if lfirst_word == g['keyword'].lower():
                     send_msg = "%s%s %s" % (config.send_prefix, g['keyword'],
-                            send_cmd[len(lfirst_word):].strip())
+                                            send_cmd[len(lfirst_word):].strip())
                     group = g
                     break
             if send_msg and group:
@@ -546,7 +571,7 @@ class Doer:
         elif action['action'] == 'sendout':
             group = action['group']
             msg = action['msg']
-            if not src in [m['number'] for m in self.data.get_group_senders(group['id'])]:
+            if src != DUMMY_NUMBER and src not in [m['number'] for m in self.data.get_group_senders(group['id'])]:
                 self._log("Warning: Unauthorized sendout command '%s' from %s to %s" %
                         (orig_msg, src, phone))
                 status = 'unauthorized'
